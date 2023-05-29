@@ -25,7 +25,7 @@ class Grabber():
     def __init__(self, show_frames):
         self.show_frames = show_frames
         if show_frames:
-            pass#self.win = cv2.namedWindow("Frames", 0)
+            self.win = cv2.namedWindow("Frames", 0)
 
         try:
             if len(sys.argv) > 1:
@@ -38,18 +38,34 @@ class Grabber():
         except Exception as e:
             print(f"Some problem with camera: {e}")
             exit()
+        
+        cam_vendor = self.camera.get_vendor_name()
+        cam_model = self.camera.get_model_name()
+        print (f"Camera vendor : {cam_vendor}")
+        print (f"Camera model  : {cam_model}")
 
-        self.camera.set_region (0,0,1600,1200)
-        self.camera.set_frame_rate (20.0)
-        self.camera.set_pixel_format (Aravis.PIXEL_FORMAT_MONO_8)
+        if cam_model == "Blackfly BFLY-PGE-20E4C": # FLIR
+            self.camera.set_region (0,0,1280,1024)
+            self.camera.set_frame_rate (20.0)
+            self.camera.set_pixel_format (Aravis.PIXEL_FORMAT_MONO_8)
+        elif cam_model == "mvBlueCOUGAR-X102eC": #BlueCOUGAR-X
+            self.camera.set_region (0,0,1280,1024)
+            self.camera.set_frame_rate (20.0)
+            #self.camera.set_pixel_format (Aravis.PIXEL_FORMAT_RGB_8_PACKED)
+            self.camera.set_pixel_format (Aravis.PIXEL_FORMAT_BAYER_GR_8)
+            #self.camera.set_pixel_format (Aravis.PIXEL_FORMAT_YUV_422_PACKED)
+            #self.camera.set_pixel_format (Aravis.PIXEL_FORMAT_YUV_422_YUYV_PACKED)
+            
+        else: # Default
+            self.camera.set_region (0,0,640,480)
+            self.camera.set_frame_rate (10.0)
+            self.camera.set_pixel_format (Aravis.PIXEL_FORMAT_MONO_8) #BlueCOUGAR-X
 
         payload = self.camera.get_payload ()
 
         [x, y, self.width, self.height] = self.camera.get_region ()
 
-        print (f"Camera vendor : {self.camera.get_vendor_name()}")
-        print (f"Camera model  : {self.camera.get_model_name()}")
-        print (f"ROI           : {self.width,}x{self.height} at {x},{y}")
+        print (f"ROI           : {self.width}x{self.height} at {x},{y}")
         print (f"Payload       : {payload}")
         print (f"Pixel format  : {self.camera.get_pixel_format_as_string()}")
 
@@ -67,9 +83,10 @@ class Grabber():
     
     def grab_loop(self):
         count = 0
-        try:
             
-            while True:
+        while True:
+            try:
+
                 # Get frame
                 image = self.stream.pop_buffer()
 
@@ -81,7 +98,8 @@ class Grabber():
                 rawFrame = np.frombuffer(image.get_data(), dtype='uint8').reshape( (self.height, self.width) )
                 
                 if self.show_frames:
-                    self.show_frame(rawFrame)
+                    #rawFrame = cv2.cvtColor(rawFrame, cv2.COLOR_GRAY2BGR)
+                    cv2.imshow(self.win, rawFrame)
 
 
                 #import ipdb; ipdb.set_trace()
@@ -89,19 +107,28 @@ class Grabber():
                 if image:
                     self.stream.push_buffer(image)
                 
-                if count>100:
+
+                # cv2 window key
+                key = cv2.waitKey(1)&0xff
+                if key == ord('q'):
                     break
-        except KeyboardInterrupt:
-            print("Interrupted by Ctrl+C")
-        except Exception:
-            import traceback; traceback.print_exc()
-            print('exc..')
-        finally:
-            print ("Stop acquisition")
-            self.camera.stop_acquisition ()
+                
+
+                # if count>100:
+                #     break
+
+
+            except KeyboardInterrupt:
+                print("Interrupted by Ctrl+C")
+            except Exception:
+                import traceback; traceback.print_exc()
+                print('EXCEPTION')
+            #finally:
+            #    print ("Stop acquisition")
+            #    self.camera.stop_acquisition ()
     
-    def show_frame(self, rawFrame):
-        rawFrame
+        
+        
 
 ####################################################################
 
