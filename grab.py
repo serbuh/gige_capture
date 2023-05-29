@@ -10,7 +10,7 @@
 
 import sys
 import time
-
+import os
 import gi
 import numpy as np
 import cv2
@@ -22,10 +22,14 @@ from gi.repository import Aravis
 Aravis.enable_interface("Fake")
 
 class Grabber():
-    def __init__(self, show_frames):
+    def __init__(self, show_frames, arv_debug=False):
+        if arv_debug:
+            os.environ["ARV_DEBUG"]="all"
+
         self.show_frames = show_frames
         if show_frames:
-            self.win = cv2.namedWindow("Frames", 0)
+            self.window_name = "Frames"
+            cv2.namedWindow(self.window_name, cv2.WINDOW_AUTOSIZE)
 
         try:
             if len(sys.argv) > 1:
@@ -45,29 +49,40 @@ class Grabber():
         print (f"Camera model  : {cam_model}")
 
         if cam_model == "Blackfly BFLY-PGE-20E4C": # FLIR
-            self.camera.set_region (0,0,1280,1024)
-            self.camera.set_frame_rate (20.0)
-            self.camera.set_pixel_format (Aravis.PIXEL_FORMAT_MONO_8)
+            x, y, w, h = 0, 0, 1280, 1024
+            fps = 20.0
+            self.pixel_format = Aravis.PIXEL_FORMAT_MONO_8
+        
         elif cam_model == "mvBlueCOUGAR-X102eC": #BlueCOUGAR-X
-            self.camera.set_region (0,0,1280,1024)
-            self.camera.set_frame_rate (20.0)
-            #self.camera.set_pixel_format (Aravis.PIXEL_FORMAT_RGB_8_PACKED)
-            self.camera.set_pixel_format (Aravis.PIXEL_FORMAT_BAYER_GR_8)
-            #self.camera.set_pixel_format (Aravis.PIXEL_FORMAT_YUV_422_PACKED)
-            #self.camera.set_pixel_format (Aravis.PIXEL_FORMAT_YUV_422_YUYV_PACKED)
+            x, y, w, h = 0, 0, 1280, 1024
+            fps = 20.0
+            self.pixel_format = Aravis.PIXEL_FORMAT_BAYER_GR_8
+            #self.pixel_format = Aravis.PIXEL_FORMAT_RGB_8_PACKED
+            #self.pixel_format = Aravis.PIXEL_FORMAT_YUV_422_PACKED
+            #self.pixel_format = Aravis.PIXEL_FORMAT_YUV_422_YUYV_PACKED
             
         else: # Default
-            self.camera.set_region (0,0,640,480)
-            self.camera.set_frame_rate (10.0)
-            self.camera.set_pixel_format (Aravis.PIXEL_FORMAT_MONO_8) #BlueCOUGAR-X
+            x, y, w, h = 0, 0, 640, 480
+            fps = 10.0
+            self.pixel_format = Aravis.PIXEL_FORMAT_MONO_8
+        
+        # Set camera params
+        try:
+            self.camera.set_region(x,y,w,h)
+        except gi.repository.GLib.Error as e:
+            print(f"{e}\nCould not set camera params. Camera is already in use?")
+            exit()
+        self.camera.set_frame_rate(fps)
+        self.camera.set_pixel_format(self.pixel_format)
 
         payload = self.camera.get_payload ()
+        pixel_format_string = self.camera.get_pixel_format_as_string()
 
-        [x, y, self.width, self.height] = self.camera.get_region ()
+        [offset_x, offset_y, self.width, self.height] = self.camera.get_region()
 
-        print (f"ROI           : {self.width}x{self.height} at {x},{y}")
+        print (f"ROI           : {self.width}x{self.height} at {offset_x},{offset_y}")
         print (f"Payload       : {payload}")
-        print (f"Pixel format  : {self.camera.get_pixel_format_as_string()}")
+        print (f"Pixel format  : {pixel_format_string}")
 
         self.stream = self.camera.create_stream (None, None)
 
@@ -94,43 +109,41 @@ class Grabber():
                 count += 1
                 print(f"{count}")
 
-                # Get MONO8 raw frame
-                rawFrame = np.frombuffer(image.get_data(), dtype='uint8').reshape( (self.height, self.width) )
+                self.do_things_with_frame(image)
                 
-                if self.show_frames:
-                    #rawFrame = cv2.cvtColor(rawFrame, cv2.COLOR_GRAY2BGR)
-                    cv2.imshow(self.win, rawFrame)
-
-
-                #import ipdb; ipdb.set_trace()
-                        #print (image)
                 if image:
                     self.stream.push_buffer(image)
                 
-
                 # cv2 window key
                 key = cv2.waitKey(1)&0xff
                 if key == ord('q'):
                     break
                 
-
-                # if count>100:
-                #     break
-
-
             except KeyboardInterrupt:
                 print("Interrupted by Ctrl+C")
+                self.camera.stop_acquisition ()
+                exit()
             except Exception:
                 import traceback; traceback.print_exc()
-                print('EXCEPTION')
-            #finally:
-            #    print ("Stop acquisition")
-            #    self.camera.stop_acquisition ()
+                print(f'Exception on frame {count}')
     
+    def do_things_with_frame(self, image):
+        # Get raw buffer
+        buf = image.get_data()
+        #print(f"Bits per pixel {len(buf)/self.height/self.width}")
+
+        # Take only Y
+        buf=buf[:self.height*self.width]
+        
+        rawFrame = np.frombuffer(buf, dtype='uint8').reshape( (self.height, self.width) )
+                
+        if self.show_frames:
+            #rawFrame = cv2.cvtColor(rawFrame, cv2.COLOR_GRAY2BGR)
+            cv2.imshow(self.window_name, rawFrame)
         
         
 
 ####################################################################
 
-grabber = Grabber(show_frames=True)
+grabber = Grabber(show_frames=True, arv_debug=True)
 grabber.grab_loop()
