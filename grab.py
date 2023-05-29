@@ -17,10 +17,49 @@ import cv2
 import logging
 
 gi.require_version('Aravis', '0.8')
-
-from gi.repository import Aravis
+gi.require_version('Gst', '1.0')
+from gi.repository import Aravis, Gst
 
 Aravis.enable_interface("Fake")
+
+class GstSender():
+    def __init__(self, fps):
+        host = "127.0.0.1"
+        port = 5000
+        self.fps = fps
+
+        # Initialize GStreamer
+        Gst.init(None)
+
+        # Create a GStreamer pipeline
+        #self.pipeline = Gst.parse_launch("appsrc name=src ! videoconvert ! video/x-raw,format=I420 ! xvimagesink")
+        self.pipeline = Gst.parse_launch("appsrc name=src ! videoconvert ! queue ! x264enc tune=zerolatency ! video/x-h264, stream-format=byte-stream ! rtph264pay ! udpsink host=127.0.0.1 port=5000")
+
+        # Get the appsrc element from the pipeline
+        self.appsrc = self.pipeline.get_by_name("src")
+        self.appsrc.set_property("format", Gst.Format.TIME)
+
+        # Start the pipeline
+        self.pipeline.set_state(Gst.State.PLAYING)
+        
+        #self.udp_writer = cv2.VideoWriter(f'appsrc ! queue ! videoconvert ! queue ! video/x-raw, width=(int){self.width}, height=(int){self.height}, framerate=(fraction){int(self.fps)}/1, format=(string)BAYER_GR8 ! x265enc speed-preset=superfast tune=zerolatency ! h265parse ! rtph265pay ! udpsink host={host} port={port} sync=false', cv2.CAP_GSTREAMER, 0, 20, (self.width, self.height), True)
+        #
+    
+    def send_frame(self, frame_to_show):
+        # Convert the frame to a GStreamer buffer
+        gst_buffer = Gst.Buffer.new_wrapped(frame_to_show.tobytes())
+
+        # Set the timestamp and duration of the buffer
+        gst_buffer.pts = gst_buffer.dts = Gst.CLOCK_TIME_NONE
+        gst_buffer.duration = int(1e9 / self.fps)
+
+        # Push the buffer to the appsrc element
+        self.appsrc.emit("push-buffer", gst_buffer)
+        #self.udp_writer.write(frame_to_show)
+    
+    def destroy(self):
+        self.pipeline.set_state(Gst.State.NULL)
+        
 
 class Grabber():
     def __init__(self, send_frames, show_frames, arv_debug=False):
@@ -96,12 +135,10 @@ class Grabber():
             cv2.namedWindow(self.window_name, cv2.WINDOW_AUTOSIZE)
         
         # Send frames options
-        self.send_frames = send_frames
-        if self.send_frames:
-            host = "127.0.0.1"
-            port = 5000
-            self.udp_writer = cv2.VideoWriter(f'appsrc ! queue ! videoconvert ! queue ! video/x-raw, width=(int){self.width}, height=(int){self.height}, framerate=(fraction){int(self.fps)}/1, format=(string)BAYER_GR8 ! x265enc speed-preset=superfast tune=zerolatency ! h265parse ! rtph265pay ! udpsink host={host} port={port} sync=false', cv2.CAP_GSTREAMER, 0, 20, (self.width, self.height), True)
-            #                                                                                                                                                                                                x265enc tune=zerolatency ! video/x-h265, stream-format=byte-stream ! rtph265pay ! udpsink host=$IP port=5000
+        if send_frames:
+            self.gst_sender = GstSender(self.fps)
+        else:
+            self.gst_sender = None
 
     def grab_loop(self):
         count = 0
@@ -128,7 +165,9 @@ class Grabber():
                 
             except KeyboardInterrupt:
                 print("Interrupted by Ctrl+C")
-                self.camera.stop_acquisition ()
+                self.camera.stop_acquisition()
+                if self.gst_sender is not None:
+                    self.gst_sender.destroy()
                 exit()
             except Exception:
                 import traceback; traceback.print_exc()
@@ -142,9 +181,8 @@ class Grabber():
             frame_raw = np.frombuffer(buf, dtype='uint8').reshape( (self.height, self.width) )
 
             # Bayer2RGB
-            #frame_to_show = cv2.cvtColor(frame_raw, cv2.COLOR_BayerGR2RGB)
-            frame_to_show = frame_raw
-
+            frame_to_show = cv2.cvtColor(frame_raw, cv2.COLOR_BayerGR2GRAY)
+            
             # Take only Y
             #buf=buf[:self.height*self.width]
         else:
@@ -155,12 +193,12 @@ class Grabber():
             #rawFrame = cv2.cvtColor(rawFrame, cv2.COLOR_GRAY2BGR)
             cv2.imshow(self.window_name, frame_to_show)
         
-        if self.send_frames and frame_to_show is not None:
-            self.udp_writer.write(frame_to_show)
+        if self.gst_sender is not None:
+            self.gst_sender.send_frame(frame_to_show)
         
         
 
 ####################################################################
 
-grabber = Grabber(send_frames=True, show_frames=False, arv_debug=True)
+grabber = Grabber(send_frames=True, show_frames=True, arv_debug=True)
 grabber.grab_loop()
