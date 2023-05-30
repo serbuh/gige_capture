@@ -1,5 +1,11 @@
 #!/usr/bin/env python
 
+# NOTE: to debug Aravis:
+# Run ARV_DEBUG=all python grab.py
+
+# NOTE: to debug Gstreamer:
+# RUN GST_DEBUG=LOG/TRACE/MEMDUMP
+
 #  If you have installed aravis in a non standard location, you may need
 #   to make GI_TYPELIB_PATH point to the correct location. For example:
 #
@@ -32,7 +38,7 @@ class GstSender():
         Gst.init(None)
 
         # Create a GStreamer pipeline
-        #self.pipeline = Gst.parse_launch("appsrc name=src ! videoconvert ! video/x-raw,format=I420 ! xvimagesink")
+        #self.pipeline = Gst.parse_launch("appsrc name=src ! videoconvert ! xvimagesink")
         #self.pipeline = Gst.parse_launch("appsrc name=src ! videoconvert ! queue ! x264enc tune=zerolatency ! video/x-h264, stream-format=byte-stream ! rtph264pay ! udpsink host=127.0.0.1 port=5000")
         self.pipeline = Gst.parse_launch("videotestsrc ! videoconvert ! xvimagesink")
         # Get the appsrc element from the pipeline
@@ -62,10 +68,10 @@ class GstSender():
         
 
 class Grabber():
-    def __init__(self, send_frames, show_frames, arv_debug=False):
-        if arv_debug:
-            os.environ["ARV_DEBUG"]="all"
-
+    def __init__(self, send_frames, show_frames):
+        self.frame_count_tot = 0
+        self.frame_count_fps = 0
+        self.start_time = time.time()
         try:
             if len(sys.argv) > 1:
                 self.camera = Aravis.Camera.new (sys.argv[1])
@@ -141,18 +147,26 @@ class Grabber():
             self.gst_sender = None
 
     def grab_loop(self):
-        count = 0
-            
         while True:
             try:
-
                 # Get frame
                 image = self.stream.pop_buffer()
+                
+                # Print FPS
+                self.frame_count_fps += 1
+                self.frame_count_tot += 1
+                now = time.time()
+                elapsed_time = now-self.start_time
+                if elapsed_time >= 3.0:
+                    fps= self.frame_count_fps / elapsed_time
+                    print(f"FPS: {fps}")
+                    # Reset FPS counter
+                    self.start_time = now
+                    self.frame_count_fps = 0
 
-                ts = time.time()
-                count += 1
-                print(f"{count}")
+                #print(f"{self.frame_count_tot}")
 
+                # Do things ...
                 self.do_things_with_frame(image)
                 
                 if image:
@@ -171,7 +185,7 @@ class Grabber():
                 exit()
             except Exception:
                 import traceback; traceback.print_exc()
-                print(f'Exception on frame {count}')
+                print(f'Exception on frame {self.frame_count}')
     
     def do_things_with_frame(self, image):
         # Get raw buffer
@@ -200,5 +214,5 @@ class Grabber():
 
 ####################################################################
 
-grabber = Grabber(send_frames=True, show_frames=True, arv_debug=True)
+grabber = Grabber(send_frames=True, show_frames=False)
 grabber.grab_loop()
