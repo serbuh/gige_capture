@@ -33,11 +33,11 @@ class GstSender():
 
         # Create a GStreamer pipeline
         #self.pipeline = Gst.parse_launch("appsrc name=src ! videoconvert ! video/x-raw,format=I420 ! xvimagesink")
-        self.pipeline = Gst.parse_launch("appsrc name=src ! videoconvert ! queue ! x264enc tune=zerolatency ! video/x-h264, stream-format=byte-stream ! rtph264pay ! udpsink host=127.0.0.1 port=5000")
-
+        #self.pipeline = Gst.parse_launch("appsrc name=src ! videoconvert ! queue ! x264enc tune=zerolatency ! video/x-h264, stream-format=byte-stream ! rtph264pay ! udpsink host=127.0.0.1 port=5000")
+        self.pipeline = Gst.parse_launch("videotestsrc ! videoconvert ! xvimagesink")
         # Get the appsrc element from the pipeline
-        self.appsrc = self.pipeline.get_by_name("src")
-        self.appsrc.set_property("format", Gst.Format.TIME)
+        #self.appsrc = self.pipeline.get_by_name("src")
+        #self.appsrc.set_property("format", Gst.Format.TIME)
 
         # Start the pipeline
         self.pipeline.set_state(Gst.State.PLAYING)
@@ -54,7 +54,7 @@ class GstSender():
         gst_buffer.duration = int(1e9 / self.fps)
 
         # Push the buffer to the appsrc element
-        self.appsrc.emit("push-buffer", gst_buffer)
+        #self.appsrc.emit("push-buffer", gst_buffer)
         #self.udp_writer.write(frame_to_show)
     
     def destroy(self):
