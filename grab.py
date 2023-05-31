@@ -95,7 +95,8 @@ class Grabber():
             self.pixel_format = Aravis.PIXEL_FORMAT_MONO_8
         
         elif cam_model == "mvBlueCOUGAR-X102eC": #BlueCOUGAR-X
-            x, y, w, h = 0, 0, 1280, 1024
+            #x, y, w, h = 0, 0, 1280, 1024
+            x, y, w, h = 320, 240, 640, 480
             self.fps = 20.0
             self.pixel_format = Aravis.PIXEL_FORMAT_BAYER_GR_8
             #self.pixel_format = Aravis.PIXEL_FORMAT_RGB_8_PACKED
