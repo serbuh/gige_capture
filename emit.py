@@ -6,7 +6,28 @@ import numpy as np
 import cv2
 import time
 
+Gst.init(None)
 
+class Gstreamer:
+    def __init__(self):
+        # GStreamer pipeline
+        pipeline_str = f"appsrc name=source is-live=true ! videoconvert ! video/x-raw,format=BGR ! videoconvert ! xvimagesink"
+        self.pipeline = Gst.parse_launch(pipeline_str)
+        self.appsrc = self.pipeline.get_by_name("source")
+        self.pipeline.set_state(Gst.State.PLAYING)
+
+    def send_frame(self, frame_np):
+        # Convert frame to GStreamer buffer
+        frame_data = frame_np.tobytes()
+        gst_buffer = Gst.Buffer.new_allocate(None, len(frame_data), None)
+        gst_buffer.fill(0, frame_data)
+
+        # Push buffer to the appsrc element
+        self.appsrc.emit('push-buffer', gst_buffer)
+    
+    def destroy(self):
+        self.pipeline.set_state(Gst.State.NULL)
+        
 class FrameGenerator:
     def __init__(self):
         self.frames = []  # List of frames to be sent
@@ -19,6 +40,8 @@ class FrameGenerator:
         self.font_thickness = 3
         self.text_color = (255, 255, 255)  # White color
         self.bg_color = (0, 0, 0)  # Black color
+
+        self.gst = Gstreamer()
     
     def get_next_frame(self):
         if self.frame_counter < self.frame_num:
@@ -44,13 +67,27 @@ class FrameGenerator:
         if cv2.waitKey(1) & 0xFF == ord('q'):
             exit()
 
+    def frames_loop(self):
+        # Run the frame generation and pipeline
+        while True:
+            frame_np = self.get_next_frame()
+            if frame_np is None:
+                break
+
+            self.gst.send_frame(frame_np)
+
+            # Show the frame
+            self.show_frame(frame_np)
+            time.sleep(1)
+
+        # Stop the pipeline
+        self.gst.destroy()
+
+        # Close windows
+        cv2.destroyAllWindows()
+
+
 
 if __name__ == "__main__":
     generator = FrameGenerator()
-    
-    # Run the frame generation and pipeline
-    while True:
-        frame_np = generator.get_next_frame()
-        print(type(frame_np))
-        generator.show_frame(frame_np)
-        time.sleep(1)
+    generator.frames_loop()
