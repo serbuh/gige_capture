@@ -185,7 +185,7 @@ class Grabber():
                 exit()
             except Exception:
                 import traceback; traceback.print_exc()
-                print(f'Exception on frame {self.frame_count}')
+                print(f'Exception on frame {self.frame_count_tot}')
     
     def do_things_with_frame(self, image):
         # Get raw buffer
@@ -214,5 +214,5 @@ class Grabber():
 
 ####################################################################
 
-grabber = Grabber(send_frames=True, show_frames=False)
+grabber = Grabber(send_frames=False, show_frames=True)
 grabber.grab_loop()
