@@ -27,44 +27,6 @@ gi.require_version('Gst', '1.0')
 from gi.repository import Aravis, Gst
 
 Aravis.enable_interface("Fake")
-
-class GstSender():
-    def __init__(self, fps):
-        host = "127.0.0.1"
-        port = 5000
-        self.fps = fps
-
-        # Initialize GStreamer
-        Gst.init(None)
-
-        # Create a GStreamer pipeline
-        #self.pipeline = Gst.parse_launch("appsrc name=src ! videoconvert ! xvimagesink")
-        #self.pipeline = Gst.parse_launch("appsrc name=src ! videoconvert ! queue ! x264enc tune=zerolatency ! video/x-h264, stream-format=byte-stream ! rtph264pay ! udpsink host=127.0.0.1 port=5000")
-        self.pipeline = Gst.parse_launch("videotestsrc ! videoconvert ! xvimagesink")
-        # Get the appsrc element from the pipeline
-        #self.appsrc = self.pipeline.get_by_name("src")
-        #self.appsrc.set_property("format", Gst.Format.TIME)
-
-        # Start the pipeline
-        self.pipeline.set_state(Gst.State.PLAYING)
-        
-        #self.udp_writer = cv2.VideoWriter(f'appsrc ! queue ! videoconvert ! queue ! video/x-raw, width=(int){self.width}, height=(int){self.height}, framerate=(fraction){int(self.fps)}/1, format=(string)BAYER_GR8 ! x265enc speed-preset=superfast tune=zerolatency ! h265parse ! rtph265pay ! udpsink host={host} port={port} sync=false', cv2.CAP_GSTREAMER, 0, 20, (self.width, self.height), True)
-        #
-    
-    def send_frame(self, frame_np):
-        # Convert the frame to a GStreamer buffer
-        gst_buffer = Gst.Buffer.new_wrapped(frame_np.tobytes())
-
-        # Set the timestamp and duration of the buffer
-        gst_buffer.pts = gst_buffer.dts = Gst.CLOCK_TIME_NONE
-        gst_buffer.duration = int(1e9 / self.fps)
-
-        # Push the buffer to the appsrc element
-        #self.appsrc.emit("push-buffer", gst_buffer)
-        #self.udp_writer.write(frame_np)
-    
-    def destroy(self):
-        self.pipeline.set_state(Gst.State.NULL)
         
 
 class Grabber():
@@ -80,9 +42,10 @@ class Grabber():
 
         # Init grabber
         if self.artificial_frames:
-            self.init_artificial_grabber()
+            self.fps = 20
+            self.init_artificial_grabber(self.fps)
         else:
-            self.init_camera_grabber()
+            self.fps = self.init_camera_grabber()
         
         # Show frames options
         if self.show_frames:
@@ -91,12 +54,14 @@ class Grabber():
         
         # Send frames options
         if self.send_frames:
-            self.gst_sender = GstSender(self.fps)
+            host = "127.0.0.1"
+            port = 5000
+            self.gst_sender = GstSender(host, port, self.fps, from_testvideo=True)
         else:
             self.gst_sender = None
     
-    def init_artificial_grabber(self):
-        self.frame_generator = FrameGenerator(640, 480)
+    def init_artificial_grabber(self, fps):
+        self.frame_generator = FrameGenerator(640, 480, fps)
 
     def init_camera_grabber(self):
         try:
@@ -184,9 +149,6 @@ class Grabber():
         return frame_np, cam_buffer
     
     def get_artificial_frames(self):
-        
-        time.sleep(1/20)
-
         # Get frame
         frame_np = self.frame_generator.get_next_frame()
         
@@ -241,7 +203,7 @@ class Grabber():
     
 
 class FrameGenerator:
-    def __init__(self, frame_width, frame_height):
+    def __init__(self, frame_width, frame_height, fps):
         self.frames = []  # List of frames to be sent
         self.frame_counter = 0
         self.frame_width = frame_width
@@ -251,8 +213,12 @@ class FrameGenerator:
         self.font_thickness = 3
         self.text_color = (255, 255, 255)  # White color
         self.bg_color = (0, 0, 0)  # Black color
+        self.fps = fps
     
     def get_next_frame(self):
+        # Sleep
+        time.sleep(1/self.fps)
+
         # Create a black image
         frame = np.zeros((self.frame_height, self.frame_width, 3), dtype=np.uint8)
         frame.fill(0)
@@ -266,8 +232,123 @@ class FrameGenerator:
         
         self.frame_counter += 1
         return frame
+    
+class GstSender:
+    def __init__(self, host, port, fps, from_testvideo):
+        self.host = host
+        self.port = port
+        self.fps = fps
+
+        # Initialize GStreamer
+        Gst.init(None)
+  
+        self.from_testvideo = from_testvideo
+
+        # Create the GStreamer pipeline elements
+        if from_testvideo:
+            self.source = Gst.ElementFactory.make("videotestsrc", "source")
+        else:
+            self.source = Gst.ElementFactory.make("appsrc", "appsrc")
+            
+        videoconvert = Gst.ElementFactory.make("videoconvert", "video-convert")
+        capsfilter = Gst.ElementFactory.make("capsfilter", "capsfilter")
+        sink = Gst.ElementFactory.make("autovideosink", "sink")
+
+        # create the empty pipeline
+        self.pipeline = Gst.Pipeline.new("super-pipeline")
+
+        if not self.pipeline or not self.source or not capsfilter or not videoconvert or not sink:
+            print("ERROR: Not all elements could be created")
+            sys.exit(1)
+
+        # build the pipeline
+        self.pipeline.add(self.source)
+        self.pipeline.add(videoconvert)
+        self.pipeline.add(capsfilter)
+        self.pipeline.add(sink)
+
+        if not self.source.link(capsfilter):
+            print("ERROR: Could not link source to capsfilter")
+            sys.exit(1)
+
+        if not capsfilter.link(videoconvert):
+            print("ERROR: Could not link capsfilter to videoconvert")
+            sys.exit(1)
+
+        if not videoconvert.link(sink):
+            print("ERROR: Could not link videoconvert to sink")
+            sys.exit(1)
+
+        # modify the source's properties
+        if from_testvideo:
+            self.source.set_property("pattern", 0)
+        else:
+            pass
+        
+        # Caps options
+        capsfilter.set_property('caps', Gst.Caps.from_string(f'video/x-raw,format=(string)BGR,width=640,height=480,framerate={self.fps}/1'))
+        
+        # start playing
+        ret = self.pipeline.set_state(Gst.State.PLAYING)
+        if ret == Gst.StateChangeReturn.FAILURE:
+            print("ERROR: Unable to set the pipeline to the playing state")
+            sys.exit(1)
+
+        self.bus = self.pipeline.get_bus()
+
+
+    def send_frame(self, frame_np):
+    
+        # Convert frame to GStreamer buffer
+        frame_data = frame_np.tobytes()
+        gst_buffer = Gst.Buffer.new_allocate(None, len(frame_data), None)
+        gst_buffer.fill(0, frame_data)
+        
+        # Push buffer to the appsrc element
+        if self.from_testvideo:
+            pass
+        else:
+            self.source.emit('push-buffer', gst_buffer)
+
+        terminate = False
+        msg = self.bus.timed_pop_filtered(
+            0,
+            Gst.MessageType.STATE_CHANGED | Gst.MessageType.EOS | Gst.MessageType.ERROR)
+
+        if not msg:
+            return
+
+        t = msg.type
+        if t == Gst.MessageType.ERROR:
+            err, dbg = msg.parse_error()
+            print("ERROR:", msg.src.get_name(), " ", err.message)
+            if dbg:
+                print("debugging info:", dbg)
+            terminate = True
+        elif t == Gst.MessageType.EOS:
+            print("End-Of-Stream reached")
+            terminate = True
+        elif t == Gst.MessageType.STATE_CHANGED:
+            # we are only interested in STATE_CHANGED messages from
+            # the pipeline
+            if msg.src == self.pipeline:
+                old_state, new_state, pending_state = msg.parse_state_changed()
+                print("Pipeline state changed from {0:s} to {1:s}".format(
+                    Gst.Element.state_get_name(old_state),
+                    Gst.Element.state_get_name(new_state)))
+        else:
+            # should not get here
+            print("ERROR: Unexpected message received")
+            return
+
+        if terminate:
+                self.destroy()
+        
+    def destroy(self):
+        self.pipeline.set_state(Gst.State.NULL)
+        sys.exit()
 
 ####################################################################
 
-grabber = Grabber(send_frames=False, show_frames=True, artificial_frames=True)
+grabber = Grabber(send_frames=True, show_frames=False, artificial_frames=True)
 grabber.grab_loop()

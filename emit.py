@@ -7,10 +7,9 @@ import cv2
 import time
 import sys
 
-Gst.init(None)
-
 class Gstreamer:
     def __init__(self, from_testvideo):
+        Gst.init(None)
         self.from_testvideo = from_testvideo
         # GStreamer pipeline
 
