@@ -21,28 +21,28 @@ class Gstreamer:
             self.source = Gst.ElementFactory.make("appsrc", "appsrc")
             
         videoconvert = Gst.ElementFactory.make("videoconvert", "video-convert")
-        filter_vertigo = Gst.ElementFactory.make("vertigotv", "vertigo-filter")
+        capsfilter = Gst.ElementFactory.make("capsfilter", "capsfilter")
         sink = Gst.ElementFactory.make("autovideosink", "sink")
 
         # create the empty pipeline
         self.pipeline = Gst.Pipeline.new("super-pipeline")
 
-        if not self.pipeline or not self.source or not filter_vertigo or not videoconvert or not sink:
+        if not self.pipeline or not self.source or not capsfilter or not videoconvert or not sink:
             print("ERROR: Not all elements could be created")
             sys.exit(1)
 
         # build the pipeline
         self.pipeline.add(self.source)
         self.pipeline.add(videoconvert)
-        self.pipeline.add(filter_vertigo)
+        self.pipeline.add(capsfilter)
         self.pipeline.add(sink)
 
-        if not self.source.link(filter_vertigo):
-            print("ERROR: Could not link source to filter-vertigo")
+        if not self.source.link(capsfilter):
+            print("ERROR: Could not link source to capsfilter")
             sys.exit(1)
 
-        if not filter_vertigo.link(videoconvert):
-            print("ERROR: Could not link filter-vertigo to videoconvert")
+        if not capsfilter.link(videoconvert):
+            print("ERROR: Could not link capsfilter to videoconvert")
             sys.exit(1)
 
         if not videoconvert.link(sink):
@@ -52,10 +52,12 @@ class Gstreamer:
         # modify the source's properties
         if from_testvideo:
             self.source.set_property("pattern", 0)
+            capsfilter.set_property('caps', Gst.Caps.from_string('video/x-raw,format=(string)BGR,width=640,height=480,framerate=1/1'))
         else:
-            caps = Gst.Caps.from_string("video/x-raw,format=(string)BGR,width=640,height=480,framerate=1/1")
-            self.source.set_property("caps", caps)
-            self.source.set_property("format", Gst.Format.TIME)
+            capsfilter.set_property('caps', Gst.Caps.from_string('video/x-raw,format=(string)BGR,width=640,height=480,framerate=1/1'))
+            # caps = Gst.Caps.from_string("video/x-raw,format=(string)BGR,width=640,height=480,framerate=1/1")
+            # self.source.set_property("caps", caps)
+            # self.source.set_property("format", Gst.Format.TIME)
         
         
         # start playing
@@ -179,5 +181,5 @@ class FrameGenerator:
 
 
 if __name__ == "__main__":
-    generator = FrameGenerator(from_testvideo=True)
+    generator = FrameGenerator(from_testvideo=False)
     generator.frames_loop()
