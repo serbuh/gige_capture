@@ -10,29 +10,34 @@ import sys
 Gst.init(None)
 
 class Gstreamer:
-    def __init__(self):
+    def __init__(self, from_testvideo):
+        self.from_testvideo = from_testvideo
         # GStreamer pipeline
 
         # create the elements
-        source = Gst.ElementFactory.make("videotestsrc", "source")
-        filter_vertigo = Gst.ElementFactory.make("vertigotv", "vertigo-filter")
+        if from_testvideo:
+            self.source = Gst.ElementFactory.make("videotestsrc", "source")
+        else:
+            self.source = Gst.ElementFactory.make("appsrc", "appsrc")
+            
         videoconvert = Gst.ElementFactory.make("videoconvert", "video-convert")
+        filter_vertigo = Gst.ElementFactory.make("vertigotv", "vertigo-filter")
         sink = Gst.ElementFactory.make("autovideosink", "sink")
 
         # create the empty pipeline
         self.pipeline = Gst.Pipeline.new("super-pipeline")
 
-        if not self.pipeline or not source or not filter_vertigo or not videoconvert or not sink:
+        if not self.pipeline or not self.source or not filter_vertigo or not videoconvert or not sink:
             print("ERROR: Not all elements could be created")
             sys.exit(1)
 
         # build the pipeline
-        self.pipeline.add(source)
-        self.pipeline.add(filter_vertigo)
+        self.pipeline.add(self.source)
         self.pipeline.add(videoconvert)
+        self.pipeline.add(filter_vertigo)
         self.pipeline.add(sink)
 
-        if not source.link(filter_vertigo):
+        if not self.source.link(filter_vertigo):
             print("ERROR: Could not link source to filter-vertigo")
             sys.exit(1)
 
@@ -45,7 +50,13 @@ class Gstreamer:
             sys.exit(1)
 
         # modify the source's properties
-        source.set_property("pattern", 0)
+        if from_testvideo:
+            self.source.set_property("pattern", 0)
+        else:
+            caps = Gst.Caps.from_string("video/x-raw,format=(string)BGR,width=640,height=480,framerate=1/1")
+            self.source.set_property("caps", caps)
+            self.source.set_property("format", Gst.Format.TIME)
+        
         
         # start playing
         ret = self.pipeline.set_state(Gst.State.PLAYING)
@@ -57,13 +68,17 @@ class Gstreamer:
 
 
     def send_frame(self, frame_np):
+    
         # Convert frame to GStreamer buffer
         frame_data = frame_np.tobytes()
         gst_buffer = Gst.Buffer.new_allocate(None, len(frame_data), None)
         gst_buffer.fill(0, frame_data)
         
         # Push buffer to the appsrc element
-        #self.appsrc.emit('push-buffer', gst_buffer)
+        if self.from_testvideo:
+            pass
+        else:
+            self.source.emit('push-buffer', gst_buffer)
 
         terminate = False
         msg = self.bus.timed_pop_filtered(
@@ -97,14 +112,14 @@ class Gstreamer:
             return
 
         if terminate:
-            self.destroy()
+                self.destroy()
         
     def destroy(self):
         self.pipeline.set_state(Gst.State.NULL)
         sys.exit()
         
 class FrameGenerator:
-    def __init__(self):
+    def __init__(self, from_testvideo):
         self.frames = []  # List of frames to be sent
         self.frame_num = 100
         self.frame_counter = 0
@@ -116,7 +131,7 @@ class FrameGenerator:
         self.text_color = (255, 255, 255)  # White color
         self.bg_color = (0, 0, 0)  # Black color
 
-        self.gst = Gstreamer()
+        self.gst = Gstreamer(from_testvideo)
     
     def get_next_frame(self):
         if self.frame_counter < self.frame_num:
@@ -164,5 +179,5 @@ class FrameGenerator:
 
 
 if __name__ == "__main__":
-    generator = FrameGenerator()
+    generator = FrameGenerator(from_testvideo=True)
     generator.frames_loop()
