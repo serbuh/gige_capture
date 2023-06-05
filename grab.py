@@ -141,7 +141,6 @@ class Grabber():
 
             # Bayer2RGB
             frame_np = cv2.cvtColor(frame_raw, cv2.COLOR_BayerGR2BGR)
-            print(frame_np.shape)
 
         else:
             print(f"Convertion from {self.pixel_format_string} not supported")
@@ -286,7 +285,7 @@ class GstSender:
             pass
         
         # Caps options
-        capsfilter.set_property('caps', Gst.Caps.from_string(f'video/x-raw,format=(string)BGR,width=640,height=480,framerate={self.fps}/1'))
+        capsfilter.set_property('caps', Gst.Caps.from_string(f'video/x-raw,format=(string)BGR,width=640,height=480,framerate={int(self.fps)}/1'))
         
         # start playing
         ret = self.pipeline.set_state(Gst.State.PLAYING)
@@ -350,5 +349,5 @@ class GstSender:
 
 ####################################################################
 
-grabber = Grabber(send_frames=True, show_frames=True, artificial_frames=True)
+grabber = Grabber(send_frames=True, show_frames=False, artificial_frames=False)
 grabber.grab_loop()
