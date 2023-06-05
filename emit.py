@@ -5,28 +5,103 @@ from PIL import Image
 import numpy as np
 import cv2
 import time
+import sys
 
 Gst.init(None)
 
 class Gstreamer:
     def __init__(self):
         # GStreamer pipeline
-        pipeline_str = f"appsrc name=source is-live=true ! videoconvert ! video/x-raw,format=BGR ! videoconvert ! xvimagesink"
-        self.pipeline = Gst.parse_launch(pipeline_str)
-        self.appsrc = self.pipeline.get_by_name("source")
-        self.pipeline.set_state(Gst.State.PLAYING)
+
+        # create the elements
+        source = Gst.ElementFactory.make("videotestsrc", "source")
+        filter_vertigo = Gst.ElementFactory.make("vertigotv", "vertigo-filter")
+        videoconvert = Gst.ElementFactory.make("videoconvert", "video-convert")
+        sink = Gst.ElementFactory.make("autovideosink", "sink")
+
+        # create the empty pipeline
+        self.pipeline = Gst.Pipeline.new("super-pipeline")
+
+        if not self.pipeline or not source or not filter_vertigo or not videoconvert or not sink:
+            print("ERROR: Not all elements could be created")
+            sys.exit(1)
+
+        # build the pipeline
+        self.pipeline.add(source)
+        self.pipeline.add(filter_vertigo)
+        self.pipeline.add(videoconvert)
+        self.pipeline.add(sink)
+
+        if not source.link(filter_vertigo):
+            print("ERROR: Could not link source to filter-vertigo")
+            sys.exit(1)
+
+        if not filter_vertigo.link(videoconvert):
+            print("ERROR: Could not link filter-vertigo to videoconvert")
+            sys.exit(1)
+
+        if not videoconvert.link(sink):
+            print("ERROR: Could not link videoconvert to sink")
+            sys.exit(1)
+
+        # modify the source's properties
+        source.set_property("pattern", 0)
+        
+        # start playing
+        ret = self.pipeline.set_state(Gst.State.PLAYING)
+        if ret == Gst.StateChangeReturn.FAILURE:
+            print("ERROR: Unable to set the pipeline to the playing state")
+            sys.exit(1)
+
+        self.bus = self.pipeline.get_bus()
+
 
     def send_frame(self, frame_np):
         # Convert frame to GStreamer buffer
         frame_data = frame_np.tobytes()
         gst_buffer = Gst.Buffer.new_allocate(None, len(frame_data), None)
         gst_buffer.fill(0, frame_data)
-
+        
         # Push buffer to the appsrc element
-        self.appsrc.emit('push-buffer', gst_buffer)
-    
+        #self.appsrc.emit('push-buffer', gst_buffer)
+
+        terminate = False
+        msg = self.bus.timed_pop_filtered(
+            0,
+            Gst.MessageType.STATE_CHANGED | Gst.MessageType.EOS | Gst.MessageType.ERROR)
+
+        if not msg:
+            return
+
+        t = msg.type
+        if t == Gst.MessageType.ERROR:
+            err, dbg = msg.parse_error()
+            print("ERROR:", msg.src.get_name(), " ", err.message)
+            if dbg:
+                print("debugging info:", dbg)
+            terminate = True
+        elif t == Gst.MessageType.EOS:
+            print("End-Of-Stream reached")
+            terminate = True
+        elif t == Gst.MessageType.STATE_CHANGED:
+            # we are only interested in STATE_CHANGED messages from
+            # the pipeline
+            if msg.src == self.pipeline:
+                old_state, new_state, pending_state = msg.parse_state_changed()
+                print("Pipeline state changed from {0:s} to {1:s}".format(
+                    Gst.Element.state_get_name(old_state),
+                    Gst.Element.state_get_name(new_state)))
+        else:
+            # should not get here
+            print("ERROR: Unexpected message received")
+            return
+
+        if terminate:
+            self.destroy()
+        
     def destroy(self):
         self.pipeline.set_state(Gst.State.NULL)
+        sys.exit()
         
 class FrameGenerator:
     def __init__(self):
@@ -73,7 +148,7 @@ class FrameGenerator:
             frame_np = self.get_next_frame()
             if frame_np is None:
                 break
-
+            
             self.gst.send_frame(frame_np)
 
             # Show the frame
