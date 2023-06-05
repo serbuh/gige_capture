@@ -56,7 +56,7 @@ class Grabber():
         if self.send_frames:
             host = "127.0.0.1"
             port = 5000
-            self.gst_sender = GstSender(host, port, self.fps, from_testvideo=True)
+            self.gst_sender = GstSender(host, port, self.fps, from_testvideo=False)
         else:
             self.gst_sender = None
     
@@ -83,13 +83,13 @@ class Grabber():
 
         if cam_model == "Blackfly BFLY-PGE-20E4C": # FLIR
             x, y, w, h = 0, 0, 1280, 1024
-            self.fps = 20.0
+            fps = 20.0
             self.pixel_format = Aravis.PIXEL_FORMAT_MONO_8
         
         elif cam_model == "mvBlueCOUGAR-X102eC": #BlueCOUGAR-X
             #x, y, w, h = 0, 0, 1280, 1024
             x, y, w, h = 320, 240, 640, 480
-            self.fps = 20.0
+            fps = 20.0
             self.pixel_format = Aravis.PIXEL_FORMAT_BAYER_GR_8
             #self.pixel_format = Aravis.PIXEL_FORMAT_RGB_8_PACKED
             #self.pixel_format = Aravis.PIXEL_FORMAT_YUV_422_PACKED
@@ -97,7 +97,7 @@ class Grabber():
             
         else: # Default
             x, y, w, h = 0, 0, 640, 480
-            self.fps = 10.0
+            fps = 10.0
             self.pixel_format = Aravis.PIXEL_FORMAT_MONO_8
         
         # Set camera params
@@ -106,7 +106,7 @@ class Grabber():
         except gi.repository.GLib.Error as e:
             print(f"{e}\nCould not set camera params. Camera is already in use?")
             exit()
-        self.camera.set_frame_rate(self.fps)
+        self.camera.set_frame_rate(fps)
         self.camera.set_pixel_format(self.pixel_format)
 
         payload = self.camera.get_payload ()
@@ -126,6 +126,8 @@ class Grabber():
 
         print ("Start acquisition")
         self.camera.start_acquisition ()
+        
+        return fps
 
     def get_frame_from_camera(self):
         # Get frame
@@ -138,10 +140,9 @@ class Grabber():
             frame_raw = np.frombuffer(buf, dtype='uint8').reshape( (self.height, self.width) )
 
             # Bayer2RGB
-            frame_np = cv2.cvtColor(frame_raw, cv2.COLOR_BayerGR2GRAY)
-            
-            # Take only Y
-            #buf=buf[:self.height*self.width]
+            frame_np = cv2.cvtColor(frame_raw, cv2.COLOR_BayerGR2BGR)
+            print(frame_np.shape)
+
         else:
             print(f"Convertion from {self.pixel_format_string} not supported")
             frame_np = None
@@ -164,7 +165,6 @@ class Grabber():
                 
                 # Show frame
                 if self.show_frames and frame_np is not None:
-                    #rawFrame = cv2.cvtColor(rawFrame, cv2.COLOR_GRAY2BGR)
                     cv2.imshow(self.window_name, frame_np)
                 
                 if self.gst_sender is not None:
@@ -350,5 +350,5 @@ class GstSender:
 
 ####################################################################
 
-grabber = Grabber(send_frames=True, show_frames=False, artificial_frames=True)
+grabber = Grabber(send_frames=True, show_frames=True, artificial_frames=True)
 grabber.grab_loop()
