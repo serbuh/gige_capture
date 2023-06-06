@@ -30,9 +30,10 @@ Aravis.enable_interface("Fake")
         
 
 class Grabber():
-    def __init__(self, send_frames, show_frames, artificial_frames):
-        self.send_frames = send_frames
-        self.show_frames = show_frames
+    def __init__(self, enable_gst, send_not_show, show_frames_cv2, artificial_frames):
+        self.enable_gst = enable_gst
+        self.send_not_show = send_not_show
+        self.show_frames_cv2 = show_frames_cv2
         self.artificial_frames = artificial_frames
         
         # Init FPS variables
@@ -48,15 +49,15 @@ class Grabber():
             self.fps = self.init_camera_grabber()
         
         # Show frames options
-        if self.show_frames:
+        if self.show_frames_cv2:
             self.window_name = "Frames"
             cv2.namedWindow(self.window_name, cv2.WINDOW_AUTOSIZE)
         
         # Send frames options
-        if self.send_frames:
+        if self.enable_gst:
             host = "127.0.0.1"
             port = 5000
-            self.gst_sender = GstSender(host, port, self.fps, from_testvideo=False)
+            self.gst_sender = GstSender(host, port, self.fps, self.send_not_show, from_testvideo=False)
         else:
             self.gst_sender = None
     
@@ -140,7 +141,7 @@ class Grabber():
             frame_raw = np.frombuffer(buf, dtype='uint8').reshape( (self.height, self.width) )
 
             # Bayer2RGB
-            frame_np = cv2.cvtColor(frame_raw, cv2.COLOR_BayerGR2BGR)
+            frame_np = cv2.cvtColor(frame_raw, cv2.COLOR_BayerGR2RGB)
 
         else:
             print(f"Convertion from {self.pixel_format_string} not supported")
@@ -163,7 +164,7 @@ class Grabber():
                     frame_np, cam_buffer = self.get_frame_from_camera()
                 
                 # Show frame
-                if self.show_frames and frame_np is not None:
+                if self.show_frames_cv2 and frame_np is not None:
                     cv2.imshow(self.window_name, frame_np)
                 
                 if self.gst_sender is not None:
@@ -233,18 +234,28 @@ class FrameGenerator:
         return frame
     
 class GstSender:
-    def __init__(self, host, port, fps, from_testvideo):
+    def __init__(self, host, port, fps, send_not_show, from_testvideo):
         self.host = host
         self.port = port
         self.fps = fps
+        self.send_not_show = send_not_show
+        self.from_testvideo = from_testvideo
 
         # Initialize GStreamer
         Gst.init(None)
-  
-        self.from_testvideo = from_testvideo
+
+        if self.send_not_show:
+            self.create_send_pipeline()
+        else:
+            self.create_show_pipeline()
+        
+    def create_send_pipeline(self):
+        pass
+
+    def create_show_pipeline(self):
 
         # Create the GStreamer pipeline elements
-        if from_testvideo:
+        if self.from_testvideo:
             self.source = Gst.ElementFactory.make("videotestsrc", "source")
         else:
             self.source = Gst.ElementFactory.make("appsrc", "appsrc")
@@ -279,7 +290,7 @@ class GstSender:
             sys.exit(1)
 
         # modify the source's properties
-        if from_testvideo:
+        if self.from_testvideo:
             self.source.set_property("pattern", 0)
         else:
             pass
@@ -349,5 +360,5 @@ class GstSender:
 
 ####################################################################
 
-grabber = Grabber(send_frames=True, show_frames=False, artificial_frames=False)
+grabber = Grabber(enable_gst=True, send_not_show=False, show_frames_cv2=False, artificial_frames=False)
 grabber.grab_loop()
