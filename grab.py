@@ -241,51 +241,92 @@ class GstSender:
         self.send_not_show = send_not_show
         self.from_testvideo = from_testvideo
 
-        # Initialize GStreamer
-        Gst.init(None)
-
+        self.pipeline_video_read() # Create the video read part of the pipeline
+        
         if self.send_not_show:
             self.create_send_pipeline()
         else:
             self.create_show_pipeline()
         
-    def create_send_pipeline(self):
-        pass
+        # start playing
+        ret = self.pipeline.set_state(Gst.State.PLAYING)
+        if ret == Gst.StateChangeReturn.FAILURE:
+            print("ERROR: Unable to set the pipeline to the playing state")
+            sys.exit(1)
 
-    def create_show_pipeline(self):
+        self.bus = self.pipeline.get_bus()
 
-        # Create the GStreamer pipeline elements
+    def pipeline_video_read(self):
+        # Initialize GStreamer
+        Gst.init(None)
+
+        # Create the empty pipeline
+        self.pipeline = Gst.Pipeline.new("super-pipeline")
+        if not self.pipeline:
+            print("ERROR: Could not create pipeline")
+            sys.exit(1)
+
+        # Create the source element
         if self.from_testvideo:
             self.source = Gst.ElementFactory.make("videotestsrc", "source")
         else:
             self.source = Gst.ElementFactory.make("appsrc", "appsrc")
-            
-        videoconvert = Gst.ElementFactory.make("videoconvert", "video-convert")
-        capsfilter = Gst.ElementFactory.make("capsfilter", "capsfilter")
-        sink = Gst.ElementFactory.make("autovideosink", "sink")
+        
+        if not self.source:
+            print("ERROR: Could not create source")
+            sys.exit(1)
+        
+        # Add source to pipeline
+        self.pipeline.add(self.source)
 
-        # create the empty pipeline
-        self.pipeline = Gst.Pipeline.new("super-pipeline")
-
-        if not self.pipeline or not self.source or not capsfilter or not videoconvert or not sink:
-            print("ERROR: Not all elements could be created")
+        # Create capsfilter
+        self.capsfilter = Gst.ElementFactory.make("capsfilter", "capsfilter")
+        if not self.capsfilter:
+            print("ERROR: Could not create capsfilter")
             sys.exit(1)
 
-        # build the pipeline
-        self.pipeline.add(self.source)
-        self.pipeline.add(videoconvert)
-        self.pipeline.add(capsfilter)
-        self.pipeline.add(sink)
+        # Add capsfilter
+        self.pipeline.add(self.capsfilter)
 
-        if not self.source.link(capsfilter):
+        # Link Capsfilter to source
+        if not self.source.link(self.capsfilter):
             print("ERROR: Could not link source to capsfilter")
             sys.exit(1)
+        
 
-        if not capsfilter.link(videoconvert):
+        # Create videoconvert
+        self.videoconvert = Gst.ElementFactory.make("videoconvert", "video-convert")
+        if not self.videoconvert:
+            print("ERROR: Could not create videoconvert")
+            sys.exit(1)
+        
+        # Add videoconvert
+        self.pipeline.add(self.videoconvert)
+
+        # Link capsfilter to videoconvert
+        if not self.capsfilter.link(self.videoconvert):
             print("ERROR: Could not link capsfilter to videoconvert")
             sys.exit(1)
+        
+        # Caps options
+        self.capsfilter.set_property('caps', Gst.Caps.from_string(f'video/x-raw,format=(string)BGR,width=640,height=480,framerate={int(self.fps)}/1'))
 
-        if not videoconvert.link(sink):
+    def create_send_pipeline(self):
+        pass
+
+    def create_show_pipeline(self):
+        
+        # Create autovideosink
+        self.sink = Gst.ElementFactory.make("autovideosink", "sink")
+        if not self.sink:
+            print("ERROR: Could not create autovideosink")
+            sys.exit(1)
+
+        # Add autovideosink
+        self.pipeline.add(self.sink)
+
+        # Link sink to videoconvert
+        if not self.videoconvert.link(self.sink):
             print("ERROR: Could not link videoconvert to sink")
             sys.exit(1)
 
@@ -295,16 +336,7 @@ class GstSender:
         else:
             pass
         
-        # Caps options
-        capsfilter.set_property('caps', Gst.Caps.from_string(f'video/x-raw,format=(string)BGR,width=640,height=480,framerate={int(self.fps)}/1'))
         
-        # start playing
-        ret = self.pipeline.set_state(Gst.State.PLAYING)
-        if ret == Gst.StateChangeReturn.FAILURE:
-            print("ERROR: Unable to set the pipeline to the playing state")
-            sys.exit(1)
-
-        self.bus = self.pipeline.get_bus()
 
 
     def send_frame(self, frame_np):
