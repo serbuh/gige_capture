@@ -269,6 +269,7 @@ class GstSender:
         # Create the source element
         if self.from_testvideo:
             self.source = Gst.ElementFactory.make("videotestsrc", "source")
+            self.source.set_property("pattern", 0)
         else:
             self.source = Gst.ElementFactory.make("appsrc", "appsrc")
         
@@ -290,9 +291,10 @@ class GstSender:
 
         # Link Capsfilter to source
         if not self.source.link(self.capsfilter):
-            print("ERROR: Could not link source to capsfilter")
+            print("ERROR: Could not link capsfilter to source")
             sys.exit(1)
         
+        self.capsfilter.set_property('caps', Gst.Caps.from_string(f'video/x-raw,format=(string)BGR,width=640,height=480,framerate={int(self.fps)}/1'))
 
         # Create videoconvert
         self.videoconvert = Gst.ElementFactory.make("videoconvert", "video-convert")
@@ -303,16 +305,89 @@ class GstSender:
         # Add videoconvert
         self.pipeline.add(self.videoconvert)
 
-        # Link capsfilter to videoconvert
+        # Link videoconvert to capsfilter
         if not self.capsfilter.link(self.videoconvert):
-            print("ERROR: Could not link capsfilter to videoconvert")
+            print("ERROR: Could not link videoconvert to capsfilter")
             sys.exit(1)
-        
-        # Caps options
-        self.capsfilter.set_property('caps', Gst.Caps.from_string(f'video/x-raw,format=(string)BGR,width=640,height=480,framerate={int(self.fps)}/1'))
+
 
     def create_send_pipeline(self):
-        pass
+        # Create queue
+        self.queue = Gst.ElementFactory.make('queue','queue')
+        if not self.queue:
+            print("ERROR: Could not create queue")
+        
+        # Add queue
+        self.pipeline.add(self.queue)
+
+        # Link queue to videoconvert
+        if not self.videoconvert.link(self.queue):
+            print("ERROR: Could not link queue to videoconvert")
+            sys.exit(1)
+        
+
+        # TODO x265enc tune=zerolatency
+        # Create x265enc
+        self.x265enc = Gst.ElementFactory.make('x265enc','x265enc')
+        if not self.x265enc:
+            print("ERROR: Could not create x265enc")
+        
+        # Add x265enc
+        self.pipeline.add(self.x265enc)
+
+        # Link x265enc to queue
+        if not self.queue.link(self.x265enc):
+            print("ERROR: Could not link queue to x265enc")
+            sys.exit(1)
+
+
+        # Create capsfilter2
+        self.capsfilter2 = Gst.ElementFactory.make("capsfilter", "capsfilter2")
+        if not self.capsfilter2:
+            print("ERROR: Could not create capsfilter2")
+            sys.exit(1)
+
+        # Add capsfilter
+        self.pipeline.add(self.capsfilter2)
+
+        # Link Capsfilter2 to x265enc
+        if not self.x265enc.link(self.capsfilter2):
+            print("ERROR: Could not link capsfilter to x265enc")
+            sys.exit(1)
+        
+        self.capsfilter2.set_property('caps', Gst.Caps.from_string(f'video/x-h265, stream-format=byte-stream'))
+
+
+        # Create rtph265pay
+        self.rtph265pay = Gst.ElementFactory.make('rtph265pay','rtph265pay')
+        if not self.rtph265pay:
+            print("ERROR: Could not create rtph265pay")
+        
+        # Add rtph265pay
+        self.pipeline.add(self.rtph265pay)
+
+        # Link rtph265pay to capsfilter2
+        if not self.capsfilter2.link(self.rtph265pay):
+            print("ERROR: Could not link rtph265pay to capsfilter2")
+            sys.exit(1)
+
+
+        # Create udpsink
+        self.udpsink = Gst.ElementFactory.make('udpsink','appsink')
+        if not self.udpsink:
+            print("ERROR: Could not create queue")
+        
+        # Add queue
+        self.pipeline.add(self.udpsink)
+
+        # Link udpsink to rtph265pay
+        if not self.rtph265pay.link(self.udpsink):
+            print("ERROR: Could not link udpsink to rtph265pay")
+            sys.exit(1)
+        
+        print(f"udpsink set to: {self.host}:{self.port}")
+        self.udpsink.set_property('host', self.host)
+        self.udpsink.set_property('port', self.port)
 
     def create_show_pipeline(self):
         
@@ -327,16 +402,8 @@ class GstSender:
 
         # Link sink to videoconvert
         if not self.videoconvert.link(self.sink):
-            print("ERROR: Could not link videoconvert to sink")
+            print("ERROR: Could not link sink to videoconvert")
             sys.exit(1)
-
-        # modify the source's properties
-        if self.from_testvideo:
-            self.source.set_property("pattern", 0)
-        else:
-            pass
-        
-        
 
 
     def send_frame(self, frame_np):
@@ -392,5 +459,5 @@ class GstSender:
 
 ####################################################################
 
-grabber = Grabber(enable_gst=True, send_not_show=False, show_frames_cv2=False, artificial_frames=False)
+grabber = Grabber(enable_gst=True, send_not_show=True, show_frames_cv2=False, artificial_frames=False)
 grabber.grab_loop()
