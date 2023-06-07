@@ -290,28 +290,25 @@ class GstSender:
             print("ERROR: Could not create pipeline")
             sys.exit(1)
 
-        # Add source element
         if self.from_testvideo:
-            self.add_element_and_link("videotestsrc", "source")
+            self.add_element_and_link("videotestsrc", "source") # Add source
             self.pipeline.get_by_name('source').set_property("pattern", 0)
         else:
-            self.add_element_and_link("appsrc", "source")
+            self.add_element_and_link("appsrc", "source") # Add source
 
-        # Create capsfilter
-        self.add_element_and_link("capsfilter", "capsfilter", link_to="source")
+        self.add_element_and_link("capsfilter", "capsfilter", link_to="source") # Create capsfilter
         self.pipeline.get_by_name('capsfilter').set_property('caps', Gst.Caps.from_string(f'video/x-raw,format=(string)BGR,width=640,height=480,framerate={int(self.fps)}/1'))
-
-        # Create videoconvert
-        self.add_element_and_link("videoconvert", "videoconvert1", link_to="capsfilter")
+        self.add_element_and_link("videoconvert", "videoconvert1", link_to="capsfilter") # Create videoconvert
 
 
     def create_send_pipeline(self):
-        
-        self.add_element_and_link("queue", "queue", link_to="videoconvert1") # Create queue
+        self.add_element_and_link("capsfilter", "capsfilter2", link_to="videoconvert1") # Create capsfilter2
+        self.pipeline.get_by_name('capsfilter2').set_property('caps', Gst.Caps.from_string(f'video/x-raw,format=(string)I420,width=640,height=480,framerate={int(self.fps)}/1'))
+        self.add_element_and_link("queue", "queue", link_to="capsfilter2") # Create queue
         self.add_element_and_link("x265enc", "x265enc", link_to="queue") # Create x265enc # TODO x265enc tune=zerolatency
-        self.add_element_and_link("capsfilter", "capsfilter2", link_to="x265enc") # Create capsfilter2
-        self.pipeline.get_by_name('capsfilter2').set_property('caps', Gst.Caps.from_string('video/x-h265, stream-format=byte-stream'))
-        self.add_element_and_link("rtph265pay", "rtph265pay", link_to="capsfilter2") # Create rtph265pay
+        self.add_element_and_link("capsfilter", "capsfilter3", link_to="x265enc") # Create capsfilter3
+        self.pipeline.get_by_name('capsfilter3').set_property('caps', Gst.Caps.from_string('video/x-h265, stream-format=byte-stream'))
+        self.add_element_and_link("rtph265pay", "rtph265pay", link_to="capsfilter3") # Create rtph265pay
         self.add_element_and_link("udpsink", "udpsink", link_to="rtph265pay") # Create udpsink
         print(f"udpsink set to: {self.host}:{self.port}")
         self.pipeline.get_by_name("udpsink").set_property('host', self.host)
@@ -375,5 +372,5 @@ class GstSender:
 
 ####################################################################
 
-grabber = Grabber(enable_gst=True, send_not_show=False, show_frames_cv2=False, artificial_frames=False)
+grabber = Grabber(enable_gst=True, send_not_show=True, show_frames_cv2=False, artificial_frames=False)
 grabber.grab_loop()
