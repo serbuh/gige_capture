@@ -258,13 +258,13 @@ class GstSender:
 
     def add_element_and_link(self, element_type, element_name, link_to=None):
         if self.pipeline is None:
-            print(f"ERROR: Pipeline not initialized")
+            print(f"ERROR: {element_name} ({element_type}) not initialized")
             sys.exit(1)
 
         # Create element
-        new_element = Gst.ElementFactory.make(element_name, link_to)
+        new_element = Gst.ElementFactory.make(element_type, element_name)
         if not new_element:
-            print(f"ERROR: Can not create {element_name}")
+            print(f"ERROR: Can not create {element_name} ({element_type})")
             sys.exit(1)
         
         # Add element to pipeline
@@ -274,10 +274,10 @@ class GstSender:
         if link_to is not None:
             element_to_link_to = self.pipeline.get_by_name(link_to)
             if not element_to_link_to:
-                print(f"ERROR: Could not retrive an element to link to ({link_to}) for {element_name}")
+                print(f"ERROR: Could not retrive an element to link to ({link_to}) for {element_name} ({element_type})")
                 sys.exit(1)
             if not element_to_link_to.link(new_element):
-                print(f"ERROR: Could not link {new_element} to {element_to_link_to}")
+                print(f"ERROR: Could not link {element_name} ({element_type}) to {element_to_link_to}")
                 sys.exit(1)
 
     def pipeline_video_read(self):
@@ -291,158 +291,35 @@ class GstSender:
             sys.exit(1)
 
         # Add source element
-        # if self.from_testvideo:
-        #     self.add_element_and_link("videotestsrc", "source")
-        #     self.source.set_property("pattern", 0)
-        # else:
-        #     self.add_element_and_link("appsrc", "source")
-
-        # Create the source element
         if self.from_testvideo:
-            self.source = Gst.ElementFactory.make("videotestsrc", "source")
-            self.source.set_property("pattern", 0)
+            self.add_element_and_link("videotestsrc", "source")
+            self.pipeline.get_by_name('source').set_property("pattern", 0)
         else:
-            self.source = Gst.ElementFactory.make("appsrc", "appsrc")
-        
-        if not self.source:
-            print("ERROR: Could not create source")
-            sys.exit(1)
-        
-        # Add source to pipeline
-        self.pipeline.add(self.source)
+            self.add_element_and_link("appsrc", "source")
 
         # Create capsfilter
-        # self.add_element_and_link("capsfilter", "capsfilter", link_to="source")
-        self.capsfilter = Gst.ElementFactory.make("capsfilter", "capsfilter")
-        if not self.capsfilter:
-            print("ERROR: Could not create capsfilter")
-            sys.exit(1)
-
-        # Add capsfilter
-        self.pipeline.add(self.capsfilter)
-
-        # Link Capsfilter to source
-        if not self.source.link(self.capsfilter):
-            print("ERROR: Could not link capsfilter to source")
-            sys.exit(1)
-        
-        self.capsfilter.set_property('caps', Gst.Caps.from_string(f'video/x-raw,format=(string)BGR,width=640,height=480,framerate={int(self.fps)}/1'))
+        self.add_element_and_link("capsfilter", "capsfilter", link_to="source")
+        self.pipeline.get_by_name('capsfilter').set_property('caps', Gst.Caps.from_string(f'video/x-raw,format=(string)BGR,width=640,height=480,framerate={int(self.fps)}/1'))
 
         # Create videoconvert
-        # self.add_element_and_link("videoconvert", "videoconvert", link_to="capsfilter")
-        self.videoconvert = Gst.ElementFactory.make("videoconvert", "video-convert")
-        if not self.videoconvert:
-            print("ERROR: Could not create videoconvert")
-            sys.exit(1)
-        
-        # Add videoconvert
-        self.pipeline.add(self.videoconvert)
-
-        # Link videoconvert to capsfilter
-        if not self.capsfilter.link(self.videoconvert):
-            print("ERROR: Could not link videoconvert to capsfilter")
-            sys.exit(1)
+        self.add_element_and_link("videoconvert", "videoconvert1", link_to="capsfilter")
 
 
     def create_send_pipeline(self):
-        # Create queue
-        # self.add_element_and_link("queue", "queue", link_to="videoconvert")
-        self.queue = Gst.ElementFactory.make('queue','queue')
-        if not self.queue:
-            print("ERROR: Could not create queue")
         
-        # Add queue
-        self.pipeline.add(self.queue)
-
-        # Link queue to videoconvert
-        if not self.videoconvert.link(self.queue):
-            print("ERROR: Could not link queue to videoconvert")
-            sys.exit(1)
-        
-
-        # TODO x265enc tune=zerolatency
-        # Create x265enc
-        # self.add_element_and_link("x265enc", "x265enc", link_to="queue")
-        self.x265enc = Gst.ElementFactory.make('x265enc','x265enc')
-        if not self.x265enc:
-            print("ERROR: Could not create x265enc")
-        
-        # Add x265enc
-        self.pipeline.add(self.x265enc)
-
-        # Link x265enc to queue
-        if not self.queue.link(self.x265enc):
-            print("ERROR: Could not link queue to x265enc")
-            sys.exit(1)
-
-
-        # Create capsfilter2
-        # self.add_element_and_link("capsfilter", "capsfilter2", link_to="x265enc")
-        self.capsfilter2 = Gst.ElementFactory.make("capsfilter", "capsfilter2")
-        if not self.capsfilter2:
-            print("ERROR: Could not create capsfilter2")
-            sys.exit(1)
-
-        # Add capsfilter
-        self.pipeline.add(self.capsfilter2)
-
-        # Link Capsfilter2 to x265enc
-        if not self.x265enc.link(self.capsfilter2):
-            print("ERROR: Could not link capsfilter to x265enc")
-            sys.exit(1)
-        
-        self.capsfilter2.set_property('caps', Gst.Caps.from_string(f'video/x-h265, stream-format=byte-stream'))
-
-
-        # Create rtph265pay
-        # self.add_element_and_link("rtph265pay", "rtph265pay", link_to="capsfilter2")
-        self.rtph265pay = Gst.ElementFactory.make('rtph265pay','rtph265pay')
-        if not self.rtph265pay:
-            print("ERROR: Could not create rtph265pay")
-        
-        # Add rtph265pay
-        self.pipeline.add(self.rtph265pay)
-
-        # Link rtph265pay to capsfilter2
-        if not self.capsfilter2.link(self.rtph265pay):
-            print("ERROR: Could not link rtph265pay to capsfilter2")
-            sys.exit(1)
-
-
-        # Create udpsink
-        # self.add_element_and_link("udpsink", "udpsink", link_to="rtph265pay")
-        self.udpsink = Gst.ElementFactory.make('udpsink','appsink')
-        if not self.udpsink:
-            print("ERROR: Could not create queue")
-        
-        # Add queue
-        self.pipeline.add(self.udpsink)
-
-        # Link udpsink to rtph265pay
-        if not self.rtph265pay.link(self.udpsink):
-            print("ERROR: Could not link udpsink to rtph265pay")
-            sys.exit(1)
-        
+        self.add_element_and_link("queue", "queue", link_to="videoconvert1") # Create queue
+        self.add_element_and_link("x265enc", "x265enc", link_to="queue") # Create x265enc # TODO x265enc tune=zerolatency
+        self.add_element_and_link("capsfilter", "capsfilter2", link_to="x265enc") # Create capsfilter2
+        self.pipeline.get_by_name('capsfilter2').set_property('caps', Gst.Caps.from_string('video/x-h265, stream-format=byte-stream'))
+        self.add_element_and_link("rtph265pay", "rtph265pay", link_to="capsfilter2") # Create rtph265pay
+        self.add_element_and_link("udpsink", "udpsink", link_to="rtph265pay") # Create udpsink
         print(f"udpsink set to: {self.host}:{self.port}")
-        self.udpsink.set_property('host', self.host)
-        self.udpsink.set_property('port', self.port)
+        self.pipeline.get_by_name("udpsink").set_property('host', self.host)
+        self.pipeline.get_by_name("udpsink").set_property('port', self.port)
 
     def create_show_pipeline(self):
-        
-        # Create autovideosink
-        # self.add_element_and_link("autovideosink", "sink", link_to="videoconvert")
-        self.sink = Gst.ElementFactory.make("autovideosink", "sink")
-        if not self.sink:
-            print("ERROR: Could not create autovideosink")
-            sys.exit(1)
 
-        # Add autovideosink
-        self.pipeline.add(self.sink)
-
-        # Link sink to videoconvert
-        if not self.videoconvert.link(self.sink):
-            print("ERROR: Could not link sink to videoconvert")
-            sys.exit(1)
+        self.add_element_and_link("autovideosink", "sink", link_to="videoconvert1") # Create autovideosink
 
 
     def send_frame(self, frame_np):
@@ -456,7 +333,7 @@ class GstSender:
         if self.from_testvideo:
             pass
         else:
-            self.source.emit('push-buffer', gst_buffer)
+            self.pipeline.get_by_name('source').emit('push-buffer', gst_buffer)
 
         terminate = False
         msg = self.bus.timed_pop_filtered(
@@ -498,5 +375,5 @@ class GstSender:
 
 ####################################################################
 
-grabber = Grabber(enable_gst=True, send_not_show=True, show_frames_cv2=False, artificial_frames=False)
+grabber = Grabber(enable_gst=True, send_not_show=False, show_frames_cv2=False, artificial_frames=False)
 grabber.grab_loop()
