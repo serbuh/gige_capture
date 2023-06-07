@@ -56,7 +56,7 @@ class Grabber():
         if self.send_frames:
             host = "127.0.0.1"
             port = 5000
-            self.gst_sender = GstSender(host, port, self.fps, from_testvideo=False)
+            self.gst_sender = GstSender(host, port, self.fps, from_testvideo=True)
         else:
             self.gst_sender = None
     
@@ -252,6 +252,25 @@ class GstSender:
         videoconvert = Gst.ElementFactory.make("videoconvert", "video-convert")
         capsfilter = Gst.ElementFactory.make("capsfilter", "capsfilter")
         sink = Gst.ElementFactory.make("autovideosink", "sink")
+
+        def AddElementAndLink(element_type, element_name, link_to=None):
+            # Create
+            new_element = Gst.ElementFactory.make(element_name, link_to)
+            if not new_element:
+                print(f"ERROR: Can not create {element_name}")
+                sys.exit(1)
+            # Add to pipeline
+            self.pipeline.add(new_element)
+            # Link
+            if link_to is not None:
+                element_to_link_to = self.pipeline.get_by_name(link_to)
+                if not element_to_link_to:
+                    print(f"ERROR: Could not retrive an element to link to ({link_to}) for {element_name}")
+                    sys.exit(1)
+                if not element_to_link_to.link(new_element):
+                    print(f"ERROR: Could not link {new_element} to {element_to_link_to}")
+                    sys.exit(1)
+
 
         # create the empty pipeline
         self.pipeline = Gst.Pipeline.new("super-pipeline")
