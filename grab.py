@@ -306,10 +306,11 @@ class GstSender:
         self.pipeline.get_by_name('capsfilter2').set_property('caps', Gst.Caps.from_string(f'video/x-raw,format=(string)I420,width=640,height=480,framerate={int(self.fps)}/1'))
         self.add_element_and_link("queue", "queue", link_to="capsfilter2") # Create queue
         self.add_element_and_link("x265enc", "x265enc", link_to="queue") # Create x265enc
-        self.pipeline.get_by_name("x265enc").set_property('tune', 'zerolatency') # x265enc tune=zerolatency
+        self.pipeline.get_by_name("x265enc").set_property('tune', 'zerolatency') # x265enc tune=zerolatency to ensure less delay
         self.add_element_and_link("capsfilter", "capsfilter3", link_to="x265enc") # Create capsfilter3
         self.pipeline.get_by_name('capsfilter3').set_property('caps', Gst.Caps.from_string('video/x-h265, stream-format=byte-stream'))
         self.add_element_and_link("rtph265pay", "rtph265pay", link_to="capsfilter3") # Create rtph265pay
+        self.pipeline.get_by_name("rtph265pay").set_property('config-interval', 1) # Send VPS, SPS, PPS in order to tell receiver to get the frames even if it started after sender
         self.add_element_and_link("udpsink", "udpsink", link_to="rtph265pay") # Create udpsink
         print(f"udpsink set to: {self.host}:{self.port}")
         self.pipeline.get_by_name("udpsink").set_property('host', self.host)
