@@ -21,6 +21,8 @@ import gi
 import numpy as np
 import cv2
 import logging
+import pathlib
+import datetime
 
 gi.require_version('Aravis', '0.8')
 from gi.repository import Aravis
@@ -40,7 +42,9 @@ logger.addHandler(ch)
 logger.info("Welcome to Grabber")
 
 class Grabber():
-    def __init__(self, enable_gst, send_not_show, show_frames_cv2, artificial_frames):
+    def __init__(self, save_frames, recordings_basedir, enable_gst, send_not_show, show_frames_cv2, artificial_frames):
+        self.save_frames = save_frames
+        self.recordings_basedir = recordings_basedir
         self.enable_gst = enable_gst
         self.send_not_show = send_not_show
         self.show_frames_cv2 = show_frames_cv2
@@ -63,6 +67,13 @@ class Grabber():
             self.window_name = "Frames"
             cv2.namedWindow(self.window_name, cv2.WINDOW_AUTOSIZE)
         
+        # Prepare save folder
+        if self.save_frames and self.recordings_basedir is not None:
+            now = datetime.datetime.now().strftime("%y_%m_%d__%H_%M_%S")
+            self.recordings_full_path = os.path.join(self.recordings_basedir, now)
+            pathlib.Path(self.recordings_full_path).mkdir(parents=True, exist_ok=True) # Ensure dir existense
+            logger.info(f"Saving frames to:\n{self.recordings_full_path}")
+
         # Send frames options
         if self.enable_gst:
             host = "127.0.0.1"
@@ -166,6 +177,7 @@ class Grabber():
         return frame_np, None
 
     def grab_loop(self):
+        frame_number = 0
         while True:
             try:
                 if self.artificial_frames:
@@ -176,6 +188,10 @@ class Grabber():
                 # Show frame
                 if self.show_frames_cv2 and frame_np is not None:
                     cv2.imshow(self.window_name, frame_np)
+
+                if self.save_frames:
+                    cv2.imwrite(os.path.join(self.recordings_full_path, f"{frame_number}.tiff"), frame_np)
+                    #logger.info(os.path.join(self.recordings_full_path, f"{frame_number}.tiff"))
                 
                 if self.gst_sender is not None:
                     self.gst_sender.send_frame(frame_np)
@@ -200,6 +216,8 @@ class Grabber():
                 key = cv2.waitKey(1)&0xff
                 if key == ord('q'):
                     break
+
+                frame_number+=1
                 
             except KeyboardInterrupt:
                 logger.info("Interrupted by Ctrl+C")
@@ -245,6 +263,7 @@ class FrameGenerator:
     
 
 ####################################################################
-
-grabber = Grabber(enable_gst=True, send_not_show=True, show_frames_cv2=False, artificial_frames=False)
+file_dir=pathlib.Path().resolve()
+recordings_basedir = os.path.join(file_dir, "recordings")
+grabber = Grabber(save_frames=True, recordings_basedir=recordings_basedir, enable_gst=True, send_not_show=True, show_frames_cv2=False, artificial_frames=False)
 grabber.grab_loop()
