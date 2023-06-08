@@ -28,7 +28,16 @@ from gi.repository import Aravis
 from gst_handler import GstSender
 
 Aravis.enable_interface("Fake")
-        
+
+# Set logger
+logger = logging.getLogger("Grabber")
+logger.setLevel(logging.DEBUG)
+ch = logging.StreamHandler()
+ch.setLevel(logging.DEBUG)
+clear_with_time_msec_format = logging.Formatter(fmt='%(asctime)s.%(msecs)03d %(levelname)-8s %(message)s', datefmt='%H:%M:%S')
+ch.setFormatter(clear_with_time_msec_format)
+logger.addHandler(ch)
+logger.info("Welcome to Grabber")
 
 class Grabber():
     def __init__(self, enable_gst, send_not_show, show_frames_cv2, artificial_frames):
@@ -58,7 +67,7 @@ class Grabber():
         if self.enable_gst:
             host = "127.0.0.1"
             port = 5000
-            self.gst_sender = GstSender(host, port, self.fps, self.send_not_show, from_testvideo=False)
+            self.gst_sender = GstSender(logger, host, port, self.fps, self.send_not_show, from_testvideo=False)
         else:
             self.gst_sender = None
     
@@ -72,10 +81,10 @@ class Grabber():
             else:
                 self.camera = Aravis.Camera.new (None)
         except TypeError:
-            print("No camera found")
+            logger.info("No camera found")
             exit()
         except Exception as e:
-            print(f"Some problem with camera: {e}")
+            logger.info(f"Some problem with camera: {e}")
             exit()
         
         cam_vendor = self.camera.get_vendor_name()
@@ -106,7 +115,7 @@ class Grabber():
         try:
             self.camera.set_region(x,y,w,h)
         except gi.repository.GLib.Error as e:
-            print(f"{e}\nCould not set camera params. Camera is already in use?")
+            logger.info(f"{e}\nCould not set camera params. Camera is already in use?")
             exit()
         self.camera.set_frame_rate(fps)
         self.camera.set_pixel_format(self.pixel_format)
@@ -137,7 +146,7 @@ class Grabber():
 
         # Get raw buffer
         buf = cam_buffer.get_data()
-        #print(f"Bits per pixel {len(buf)/self.height/self.width}")
+        #logger.info(f"Bits per pixel {len(buf)/self.height/self.width}")
         if self.pixel_format == Aravis.PIXEL_FORMAT_BAYER_GR_8:
             frame_raw = np.frombuffer(buf, dtype='uint8').reshape( (self.height, self.width) )
 
@@ -145,7 +154,7 @@ class Grabber():
             frame_np = cv2.cvtColor(frame_raw, cv2.COLOR_BayerGR2RGB)
 
         else:
-            print(f"Convertion from {self.pixel_format_string} not supported")
+            logger.info(f"Convertion from {self.pixel_format_string} not supported")
             frame_np = None
         
         return frame_np, cam_buffer
@@ -182,7 +191,7 @@ class Grabber():
                 elapsed_time = now-self.start_time
                 if elapsed_time >= 3.0:
                     fps= self.frame_count_fps / elapsed_time
-                    print(f"FPS: {fps}")
+                    logger.info(f"FPS: {fps}")
                     # Reset FPS counter
                     self.start_time = now
                     self.frame_count_fps = 0
@@ -193,14 +202,14 @@ class Grabber():
                     break
                 
             except KeyboardInterrupt:
-                print("Interrupted by Ctrl+C")
+                logger.info("Interrupted by Ctrl+C")
                 self.camera.stop_acquisition()
                 if self.gst_sender is not None:
                     self.gst_sender.destroy()
                 exit()
             except Exception:
                 import traceback; traceback.print_exc()
-                print(f'Exception on frame {self.frame_count_tot}')
+                logger.info(f'Exception on frame {self.frame_count_tot}')
     
 
 class FrameGenerator:

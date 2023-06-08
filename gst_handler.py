@@ -4,7 +4,8 @@ gi.require_version('Gst', '1.0')
 from gi.repository import Gst
 
 class GstSender:
-    def __init__(self, host, port, fps, send_not_show, from_testvideo):
+    def __init__(self, logger, host, port, fps, send_not_show, from_testvideo):
+        self.logger = logger
         self.host = host
         self.port = port
         self.fps = fps
@@ -21,20 +22,20 @@ class GstSender:
         # start playing
         ret = self.pipeline.set_state(Gst.State.PLAYING)
         if ret == Gst.StateChangeReturn.FAILURE:
-            print("ERROR: Unable to set the pipeline to the playing state")
+            self.logger.info("ERROR: Unable to set the pipeline to the playing state")
             sys.exit(1)
 
         self.bus = self.pipeline.get_bus()
 
     def add_element_and_link(self, element_type, element_name, link_to=None):
         if self.pipeline is None:
-            print(f"ERROR: {element_name} ({element_type}) not initialized")
+            self.logger.info(f"ERROR: {element_name} ({element_type}) not initialized")
             sys.exit(1)
 
         # Create element
         new_element = Gst.ElementFactory.make(element_type, element_name)
         if not new_element:
-            print(f"ERROR: Can not create {element_name} ({element_type})")
+            self.logger.info(f"ERROR: Can not create {element_name} ({element_type})")
             sys.exit(1)
         
         # Add element to pipeline
@@ -44,10 +45,10 @@ class GstSender:
         if link_to is not None:
             element_to_link_to = self.pipeline.get_by_name(link_to)
             if not element_to_link_to:
-                print(f"ERROR: Could not retrive an element to link to ({link_to}) for {element_name} ({element_type})")
+                self.logger.info(f"ERROR: Could not retrive an element to link to ({link_to}) for {element_name} ({element_type})")
                 sys.exit(1)
             if not element_to_link_to.link(new_element):
-                print(f"ERROR: Could not link {element_name} ({element_type}) to {element_to_link_to}")
+                self.logger.info(f"ERROR: Could not link {element_name} ({element_type}) to {element_to_link_to}")
                 sys.exit(1)
 
     def pipeline_video_read(self):
@@ -57,7 +58,7 @@ class GstSender:
         # Create the empty pipeline
         self.pipeline = Gst.Pipeline.new("super-pipeline")
         if not self.pipeline:
-            print("ERROR: Could not create pipeline")
+            self.logger.info("ERROR: Could not create pipeline")
             sys.exit(1)
 
         if self.from_testvideo:
@@ -82,7 +83,7 @@ class GstSender:
         self.add_element_and_link("rtph265pay", "rtph265pay", link_to="capsfilter3") # Create rtph265pay
         self.pipeline.get_by_name("rtph265pay").set_property('config-interval', 1) # Send VPS, SPS, PPS in order to tell receiver to get the frames even if it started after sender
         self.add_element_and_link("udpsink", "udpsink", link_to="rtph265pay") # Create udpsink
-        print(f"udpsink set to: {self.host}:{self.port}")
+        self.logger.info(f"udpsink set to: {self.host}:{self.port}")
         self.pipeline.get_by_name("udpsink").set_property('host', self.host)
         self.pipeline.get_by_name("udpsink").set_property('port', self.port)
 
@@ -115,24 +116,24 @@ class GstSender:
         t = msg.type
         if t == Gst.MessageType.ERROR:
             err, dbg = msg.parse_error()
-            print("ERROR:", msg.src.get_name(), " ", err.message)
+            self.logger.info("ERROR:", msg.src.get_name(), " ", err.message)
             if dbg:
-                print("debugging info:", dbg)
+                self.logger.info("debugging info:", dbg)
             terminate = True
         elif t == Gst.MessageType.EOS:
-            print("End-Of-Stream reached")
+            self.logger.info("End-Of-Stream reached")
             terminate = True
         elif t == Gst.MessageType.STATE_CHANGED:
             # we are only interested in STATE_CHANGED messages from
             # the pipeline
             if msg.src == self.pipeline:
                 old_state, new_state, pending_state = msg.parse_state_changed()
-                print("Pipeline state changed from {0:s} to {1:s}".format(
+                self.logger.info("Pipeline state changed from {0:s} to {1:s}".format(
                     Gst.Element.state_get_name(old_state),
                     Gst.Element.state_get_name(new_state)))
         else:
             # should not get here
-            print("ERROR: Unexpected message received")
+            self.logger.info("ERROR: Unexpected message received")
             return
 
         if terminate:
