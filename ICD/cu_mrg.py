@@ -1,7 +1,7 @@
 """
 	cu_mrg.py
 	This file was created automatically by the RIDA IO application
-	On: 11/06/2023 15:44:30
+	On: 11/06/2023 18:01:05
 	Rida IO HFileWriter Version: 1.0, last update: 12/05/2023 10:21:26
 	Rida Database Version: 1.0
 	Header File Version marked as: 0.0
@@ -41,7 +41,7 @@ int_ = c_int                                                # Element 2756
 unsigned_char = c_ubyte                                     # Element 3636
 unsigned_int = c_uint                                       # Element 4230
 unsigned_long_long = c_ulonglong                            # Element 4369
-unsigned_short = None                                       # Element 5082
+unsigned_short = c_ushort                                   # Element 5082
 short_ = c_short                                            # Element 6232
 geo10MicroDegInt16DiffType = c_short                        # Element 8424
 geoCmInt16DiffType = c_short                                # Element 8544
