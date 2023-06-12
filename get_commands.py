@@ -29,6 +29,15 @@ def create_status():
     status_msg = cu_mrg.CvStatusMessage(header=header, cvStatus=cvStatus)
     return status_msg
 
+
+def parse_msg(msg_buffer, structure_type: ctypes.Structure):
+    expected_buffer_len = ctypes.sizeof(structure_type)
+    if len(msg_buffer) != expected_buffer_len:
+        print(f"len(msg_buffer) = {len(msg_buffer)} != {expected_buffer_len} = expected_buffer_len")
+
+    msg = structure_type.from_buffer_copy(msg_buffer)
+    return msg
+
 params_result_msg = create_reply(isOk=True)
 status_msg = create_status()
 
@@ -38,16 +47,23 @@ print(f"Sending frame_id {status_msg.cvStatus.camera2Status.frameId}")
 # Decode status
 status_msg_buffer = ctypes.create_string_buffer(ctypes.sizeof(status_msg))
 ctypes.memmove(status_msg_buffer, ctypes.addressof(status_msg), ctypes.sizeof(status_msg))
-serialized_buffer = status_msg_buffer.raw
+msg_buffer = status_msg_buffer.raw
 
 # Encode
-status_msg_buf_len = ctypes.sizeof(cu_mrg.CvStatusMessage)
-if len(serialized_buffer) != status_msg_buf_len:
-    print(f"len(serialized_buffer) = {len(serialized_buffer)} != {status_msg_buf_len} = status_msg_buf_len")
+header_len = ctypes.sizeof(cu_mrg.headerStruct)
+header = cu_mrg.headerStruct.from_buffer_copy(msg_buffer[:header_len])
+print(header.opCode)
 
-status_msg_received = cu_mrg.CvStatusMessage.from_buffer_copy(serialized_buffer)
-print(f"Received frame_id {status_msg_received.cvStatus.camera2Status.frameId}")
+if header.opCode == cu_mrg.cu_mrg_Opcodes.OPCvStatusMessage:
+    msg = parse_msg(msg_buffer, cu_mrg.CvStatusMessage)
+    print(f"Received frame_id {msg.cvStatus.camera2Status.frameId}")
+elif header.opCode == cu_mrg.cu_mrg_Opcodes.OPSetCvParamsCmdMessage:
+    msg = parse_msg(msg_buffer, cu_mrg.SetCvParamsCmdMessage)
+else:
+    print(f"opCode {header.opCode} unknown")
 
+
+import pdb; pdb.set_trace()
 
 # TODO get 
 # class SetCvParamsCmdMessage(Structure):                     # (Opcode 0x32) Message 3250
