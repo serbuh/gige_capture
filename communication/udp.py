@@ -44,8 +44,8 @@ class UDP():
             for s in readable:
                 if s is self.recv_sock:
                     msg_serialized_data, address = s.recvfrom(4*1024)
-                    if isinstance(msg_serialized_data, bytes):
-                        msg_serialized_data = msg_serialized_data.decode() # recvfrom returnes bytes in python3. json.loads() receives str.
+                    # if isinstance(msg_serialized_data, bytes):
+                    #     msg_serialized_data = msg_serialized_data.decode() # recvfrom returnes bytes in python3. json.loads() receives str.
                     msg_serialized_list.append(msg_serialized_data)
         
         return msg_serialized_list # return dict
