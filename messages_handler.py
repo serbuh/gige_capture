@@ -11,13 +11,19 @@ class MessagesHandler():
         self.logger = logger
         self.logger.info("Init Messages Handler")
 
-        receive_channel_ip = "192.168.132.212"
-        receive_channel_port = 5100
-        send_channel_ip = "192.168.132.60"
+        # receive_channel_ip = "192.168.132.212"
+        # receive_channel_port = 5100
+        # send_channel_ip = "192.168.132.60"
+        # send_channel_port = 5101
+        receive_channel_ip = "127.0.0.1"
+        receive_channel_port = 5101
+        send_channel_ip = "127.0.0.1"
         send_channel_port = 5101
         self.UDP_conn = UDP(receive_channel=(receive_channel_ip, receive_channel_port), send_channel=(send_channel_ip, send_channel_port)) # UDP connection object
     
-    def send_serialized_msg(self, msg_serialized):
+    def send_ctypes_msg(self, ctypes_msg):
+        # Serialize ctypes
+        msg_serialized = MessagesHandler.serialize_ctypes(ctypes_msg)
         self.UDP_conn.send(msg_serialized) # Send status
 
     def receive_commands_list(self):
@@ -25,18 +31,33 @@ class MessagesHandler():
 
     def send_status(self, frame_number):
         status_msg = MessagesHandler.create_status(frame_number) # Create ctypes status
-        self.logger.info(f"Sending status (frame_id {status_msg.cvStatus.camera2Status.frameId})")
-        msg_serialized = self.serialize_ctypes_struct(status_msg) # Encode status
-        self.send_serialized_msg(msg_serialized) # Send status
+        #self.logger.info(f"Sending status (frame_id {status_msg.cvStatus.camera2Status.frameId})")
+        self.send_ctypes_msg(status_msg) # Send status
 
     def register_callback(self, name, func):
         pass
     
     @staticmethod
-    def serialize_ctypes_struct(ctypes_struct):
+    def serialize_ctypes(ctypes_struct):
         status_msg_buffer = ctypes.create_string_buffer(ctypes.sizeof(ctypes_struct))
         ctypes.memmove(status_msg_buffer, ctypes.addressof(ctypes_struct), ctypes.sizeof(ctypes_struct))
         return status_msg_buffer.raw
+    
+    @staticmethod
+    def get_header_opcode(msg_serialized):
+        # Decode header
+        header_len = ctypes.sizeof(cu_mrg.headerStruct)
+        header = cu_mrg.headerStruct.from_buffer_copy(msg_serialized[:header_len])
+        return header.opCode
+
+    @staticmethod
+    def parse_msg(msg_buffer, structure_type: ctypes.Structure):
+        expected_buffer_len = ctypes.sizeof(structure_type)
+        if len(msg_buffer) != expected_buffer_len:
+            print(f"len(msg_buffer) = {len(msg_buffer)} != {expected_buffer_len} = expected_buffer_len")
+
+        msg = structure_type.from_buffer_copy(msg_buffer)
+        return msg
     
     ### Create messages
     # Create status
@@ -72,15 +93,6 @@ if __name__ == "__main__":
     send = True
     receive = True
 
-    def parse_msg(msg_buffer, structure_type: ctypes.Structure):
-        expected_buffer_len = ctypes.sizeof(structure_type)
-        if len(msg_buffer) != expected_buffer_len:
-            print(f"len(msg_buffer) = {len(msg_buffer)} != {expected_buffer_len} = expected_buffer_len")
-
-        msg = structure_type.from_buffer_copy(msg_buffer)
-        return msg
-
-
     # Set logger
     logger = logging.getLogger("MessageHandler")
     logger.setLevel(logging.DEBUG)
@@ -93,16 +105,10 @@ if __name__ == "__main__":
 
     messages_handler = MessagesHandler(logger)
 
-    def send_loop():
+    def simulate_status_loop():
         for frame_number in range(2):
             status_msg = MessagesHandler.create_status(frame_number)
-            print(f"Sending status (frame_id {status_msg.cvStatus.camera2Status.frameId})")
-            
-            # Encode status
-            msg_serialized = MessagesHandler.serialize_ctypes_struct(status_msg)
-
-            messages_handler.send_serialized_msg(msg_serialized)
-
+            messages_handler.send_ctypes_msg(status_msg)
             time.sleep(0.5)
 
     def receiver_loop():
@@ -110,35 +116,28 @@ if __name__ == "__main__":
             msg_serialized_list = messages_handler.receive_commands_list()
             #print(f"listening {i}: {msg_serialized_list}")
             for msg_serialized in msg_serialized_list:
-                print(f"Got {msg_serialized}")
+                print(f"Got\n{msg_serialized}")
 
-                # # Decode
-                header_len = ctypes.sizeof(cu_mrg.headerStruct)
-                header = cu_mrg.headerStruct.from_buffer_copy(msg_serialized[:header_len])
-                print(header.opCode)
+                header_opcode = MessagesHandler.get_header_opcode(msg_serialized)
 
-                if header.opCode == cu_mrg.cu_mrg_Opcodes.OPCvStatusMessage:
-                    msg = parse_msg(msg_serialized, cu_mrg.CvStatusMessage)
+                if header_opcode == cu_mrg.cu_mrg_Opcodes.OPCvStatusMessage:
+                    msg = MessagesHandler.parse_msg(msg_serialized, cu_mrg.CvStatusMessage)
                     print(f"Received frame_id {msg.cvStatus.camera2Status.frameId}")
-                elif header.opCode == cu_mrg.cu_mrg_Opcodes.OPSetCvParamsCmdMessage:
-                    msg = parse_msg(msg_serialized, cu_mrg.SetCvParamsCmdMessage)
+                elif header_opcode == cu_mrg.cu_mrg_Opcodes.OPSetCvParamsCmdMessage:
+                    msg = MessagesHandler.parse_msg(msg_serialized, cu_mrg.SetCvParamsCmdMessage)
                     
                     # Create ack
                     params_result_msg = MessagesHandler.create_reply(isOk=True)
-                    
-                    # Encode ack
-                    msg_serialized = MessagesHandler.serialize_ctypes_struct(params_result_msg)
-                    
                     # Send Ack
-                    messages_handler.send_serialized_msg(msg_serialized)
+                    messages_handler.send_ctypes_msg(params_result_msg)
                     
                 else:
-                    print(f"opCode {header.opCode} unknown")
+                    print(f"opCode {header_opcode} unknown")
 
             time.sleep(0.5)
             
     if send:
-        send_thread = threading.Thread(target=send_loop)
+        send_thread = threading.Thread(target=simulate_status_loop)
         send_thread.start()
 
     if receive:
