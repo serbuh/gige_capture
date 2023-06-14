@@ -4,10 +4,10 @@ gi.require_version('Gst', '1.0')
 from gi.repository import Gst
 
 class GstSender:
-    def __init__(self, logger, host, port, fps, send_not_show, from_testvideo):
+    def __init__(self, logger, gst_destination, fps, send_not_show, from_testvideo):
         self.logger = logger
-        self.host = host
-        self.port = port
+        self.host = gst_destination[0]
+        self.port = gst_destination[1]
         self.fps = fps
         self.send_not_show = send_not_show
         self.from_testvideo = from_testvideo

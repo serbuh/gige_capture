@@ -43,10 +43,11 @@ logger.addHandler(ch)
 logger.info("Welcome to Grabber")
 
 class Grabber():
-    def __init__(self, save_frames, recordings_basedir, enable_gst, send_not_show, show_frames_cv2, artificial_frames):
+    def __init__(self, save_frames, recordings_basedir, enable_gst, gst_destination, send_not_show, show_frames_cv2, artificial_frames):
         self.save_frames = save_frames
         self.recordings_basedir = recordings_basedir
         self.enable_gst = enable_gst
+        self.gst_destination = gst_destination
         self.send_not_show = send_not_show
         self.show_frames_cv2 = show_frames_cv2
         self.artificial_frames = artificial_frames
@@ -77,11 +78,7 @@ class Grabber():
 
         # Send frames options
         if self.enable_gst:
-            host = "192.168.132.60"
-            port = 1212
-            # host = "127.0.0.1"
-            # port = 5000
-            self.gst_sender = GstSender(logger, host, port, self.fps, self.send_not_show, from_testvideo=False)
+            self.gst_sender = GstSender(logger, self.gst_destination, self.fps, self.send_not_show, from_testvideo=False)
         else:
             self.gst_sender = None
     
@@ -237,5 +234,7 @@ class Grabber():
 ####################################################################
 file_dir=pathlib.Path().resolve()
 recordings_basedir = os.path.join(file_dir, "recordings")
-grabber = Grabber(save_frames=False, recordings_basedir=recordings_basedir, enable_gst=True, send_not_show=True, show_frames_cv2=True, artificial_frames=True)
+#gst_destination = ("127.0.0.1", 5000)
+gst_destination = ("192.168.132.60", 1212)
+grabber = Grabber(save_frames=False, recordings_basedir=recordings_basedir, enable_gst=True, gst_destination=gst_destination, send_not_show=True, show_frames_cv2=True, artificial_frames=True)
 grabber.frames_loop()
