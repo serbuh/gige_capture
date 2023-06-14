@@ -41,17 +41,17 @@ class MessagesHandler():
         '''
         while self.keep_receiving:
             msg_serialized_list = self.UDP_conn.recv_select()
-            #print(f"listening {i}: {msg_serialized_list}")
             for msg_serialized in msg_serialized_list:
-                print(f"Got\n{msg_serialized}")
-
                 header_opcode = MessagesHandler.get_header_opcode(msg_serialized)
+                
+                self.logger.debug(f"Got msg with opcode {hex(header_opcode)}:\n{msg_serialized}")
+
 
                 if header_opcode == cu_mrg.cu_mrg_Opcodes.OPCvStatusMessage:
-                    msg = MessagesHandler.parse_msg(msg_serialized, cu_mrg.CvStatusMessage)
+                    msg = self.parse_msg(msg_serialized, cu_mrg.CvStatusMessage)
                     print(f"Received frame_id {msg.cvStatus.camera2Status.frameId}")
                 elif header_opcode == cu_mrg.cu_mrg_Opcodes.OPSetCvParamsCmdMessage:
-                    msg = MessagesHandler.parse_msg(msg_serialized, cu_mrg.SetCvParamsCmdMessage)
+                    msg = self.parse_msg(msg_serialized, cu_mrg.SetCvParamsCmdMessage)
                     
                     # Create ack
                     params_result_msg = MessagesHandler.create_reply(isOk=True)
@@ -79,11 +79,10 @@ class MessagesHandler():
         header = cu_mrg.headerStruct.from_buffer_copy(msg_serialized[:header_len])
         return header.opCode
 
-    @staticmethod
-    def parse_msg(msg_buffer, structure_type: ctypes.Structure):
+    def parse_msg(self, msg_buffer, structure_type: ctypes.Structure):
         expected_buffer_len = ctypes.sizeof(structure_type)
         if len(msg_buffer) != expected_buffer_len:
-            print(f"len(msg_buffer) = {len(msg_buffer)} != {expected_buffer_len} = expected_buffer_len")
+            self.logger.error(f"len(msg_buffer) = {len(msg_buffer)} != {expected_buffer_len} = expected_buffer_len")
 
         msg = structure_type.from_buffer_copy(msg_buffer)
         return msg

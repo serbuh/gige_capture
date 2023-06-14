@@ -24,7 +24,7 @@ class UDP():
         self.send_sock.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, 8388608)
 
     def send(self, msg_serialized):
-        print(f"Sending to {self.send_channel}:\n'{msg_serialized}'")
+        #print(f"Sending to {self.send_channel}:\n'{msg_serialized}'")
         self.send_sock.sendto(msg_serialized, self.send_channel)
 
     def recv(self): # Not in use
