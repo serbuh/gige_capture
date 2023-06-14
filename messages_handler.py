@@ -3,12 +3,14 @@ import time
 import ctypes
 import logging
 
+
 from ICD import cu_mrg
 from communication.udp import UDP
 
 class MessagesHandler():
-    def __init__(self, logger):
+    def __init__(self, logger, print_received=False):
         self.logger = logger
+        self.print_received = print_received
         self.logger.info("Init Messages Handler")
 
         # receive_channel_ip = "192.168.132.212"
@@ -21,15 +23,20 @@ class MessagesHandler():
         send_channel_port = 5101
         self.UDP_conn = UDP(receive_channel=(receive_channel_ip, receive_channel_port), send_channel=(send_channel_ip, send_channel_port)) # UDP connection object
 
-    def start_receiver_thread(self):
         self.keep_receiving = True
+        self.received_msg_queue = None
+
+    def start_receiver_thread(self):
         self.receive_thread = threading.Thread(target=self.receive_loop)
         self.receive_thread.start()
     
     def stop_receiver_thread(self):
         self.keep_receiving = False
         self.receive_thread.join()
-
+    
+    def set_receive_queue(self, queue):
+        self.received_msg_queue = queue
+    
     def send_ctypes_msg(self, ctypes_msg):
         # Serialize ctypes
         msg_serialized = MessagesHandler.serialize_ctypes(ctypes_msg)
@@ -44,12 +51,12 @@ class MessagesHandler():
             for msg_serialized in msg_serialized_list:
                 header_opcode = MessagesHandler.get_header_opcode(msg_serialized)
                 
-                self.logger.debug(f"Got msg with opcode {hex(header_opcode)}:\n{msg_serialized}")
+                if self.print_received:
+                    self.logger.debug(f"Got msg with opcode {hex(header_opcode)}:\n{msg_serialized}")
 
-
-                if header_opcode == cu_mrg.cu_mrg_Opcodes.OPCvStatusMessage:
+                if header_opcode == cu_mrg.cu_mrg_Opcodes.OPCvStatusMessage: # NOTE: should not get status. We are sending it, not receiving
                     msg = self.parse_msg(msg_serialized, cu_mrg.CvStatusMessage)
-                    print(f"Received frame_id {msg.cvStatus.camera2Status.frameId}")
+                    #self.logger.debug(f"Received frame_id {msg.cvStatus.camera2Status.frameId}")
                 elif header_opcode == cu_mrg.cu_mrg_Opcodes.OPSetCvParamsCmdMessage:
                     msg = self.parse_msg(msg_serialized, cu_mrg.SetCvParamsCmdMessage)
                     
@@ -60,6 +67,12 @@ class MessagesHandler():
                     
                 else:
                     print(f"opCode {header_opcode} unknown")
+                    msg = None
+                    continue
+                
+                # in case of existing opcode put the item in the queue
+                if self.received_msg_queue is not None:
+                    self.received_msg_queue.put_nowait(msg)
 
             time.sleep(0.01)
 
@@ -136,7 +149,7 @@ if __name__ == "__main__":
     logger.addHandler(ch)
     logger.info("Welcome to MessageHandler")
 
-    messages_handler = MessagesHandler(logger)
+    messages_handler = MessagesHandler(logger, print_received=True)
     
     # Start receiver loop
     if enable_receive:

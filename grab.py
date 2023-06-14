@@ -23,6 +23,7 @@ import cv2
 import logging
 import pathlib
 import datetime
+import queue
 
 gi.require_version('Aravis', '0.8')
 from gi.repository import Aravis
@@ -79,6 +80,8 @@ class Grabber():
         if self.enable_messages_interface:
             self.messages_handler = MessagesHandler(self.logger)
             self.messages_handler.start_receiver_thread()
+            self.new_messages_queue = queue.Queue()
+            self.messages_handler.set_receive_queue(self.new_messages_queue)
             self.messages_handler.register_callback("change_fps", self.change_fps)
     
     def init_artificial_grabber(self, fps):
@@ -222,6 +225,10 @@ class Grabber():
                 # Receive commands / Send reports
                 if self.enable_messages_interface:
                     self.messages_handler.send_status(frame_number)
+                    while not self.new_messages_queue.empty():
+                        item = self.new_messages_queue.get_nowait()
+                        print(f"Caught {item}")
+                        # TODO apply command
                 
             except KeyboardInterrupt:
                 self.logger.info("Interrupted by Ctrl+C")
