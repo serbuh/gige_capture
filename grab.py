@@ -78,6 +78,7 @@ class Grabber():
         
         if self.enable_messages_interface:
             self.messages_handler = MessagesHandler(self.logger)
+            self.messages_handler.start_receiver_thread()
             self.messages_handler.register_callback("change_fps", self.change_fps)
     
     def init_artificial_grabber(self, fps):
@@ -220,7 +221,6 @@ class Grabber():
 
                 # Receive commands / Send reports
                 if self.enable_messages_interface:
-                    self.messages_handler.receive_commands_list()
                     self.messages_handler.send_status(frame_number)
                 
             except KeyboardInterrupt:
@@ -237,6 +237,13 @@ class Grabber():
 
     def destroy_all(self):
         
+        self.logger.info("Stop the messages receiver thread")
+        try:
+            self.messages_handler.stop_receiver_thread()
+        except:
+            import traceback; traceback.print_exc()
+            self.logger.info("Exception during stopping the receiver thread")
+
         self.logger.info("Stop the camera grabbing")
         try:
             self.camera.stop_acquisition()

@@ -34,7 +34,10 @@ class UDP():
         except BlockingIOError as e:
             print("Socket error: {}".format(e))
     
-    def recv_select(self): # returns a list of a new status batches [{batch}, {batch}, {batch}]
+    def recv_select(self): # returns a list of a new messages [msg_0, msg_1, ...]
+        '''
+        NOTE: non-blocking receive
+        '''
         msg_serialized_list = []
         new_data_available = True
         while new_data_available:
