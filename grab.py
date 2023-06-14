@@ -78,6 +78,7 @@ class Grabber():
         
         if self.enable_messages_interface:
             self.messages_handler = MessagesHandler(self.logger)
+            self.messages_handler.register_callback("change_fps", self.change_fps)
     
     def init_artificial_grabber(self, fps):
         self.frame_generator = FrameGenerator(640, 480, fps)
@@ -219,8 +220,8 @@ class Grabber():
 
                 # Receive commands / Send reports
                 if self.enable_messages_interface:
-                    self.messages_handler.receive_commands()
-                    self.messages_handler.send_reports()
+                    self.messages_handler.receive_commands_list()
+                    self.messages_handler.send_status(frame_number)
                 
             except KeyboardInterrupt:
                 self.logger.info("Interrupted by Ctrl+C")
@@ -231,6 +232,9 @@ class Grabber():
                 import traceback; traceback.print_exc()
                 self.logger.info(f'Exception on frame {self.frame_count_tot}')
     
+    def change_fps(self, new_fps):
+        self.logger.info(f"TODO: Change fps to {new_fps}")
+
     def destroy_all(self):
         
         self.logger.info("Stop the camera grabbing")

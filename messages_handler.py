@@ -1,6 +1,7 @@
 import threading
 import time
 import ctypes
+import logging
 
 from ICD import cu_mrg
 from communication.udp import UDP
@@ -9,33 +10,45 @@ class MessagesHandler():
     def __init__(self, logger):
         self.logger = logger
         self.logger.info("Init Messages Handler")
+
+        receive_channel_ip = "192.168.132.212"
+        receive_channel_port = 5100
+        send_channel_ip = "192.168.132.60"
+        send_channel_port = 5101
+        self.UDP_conn = UDP(receive_channel=(receive_channel_ip, receive_channel_port), send_channel=(send_channel_ip, send_channel_port)) # UDP connection object
     
-    def receive_commands(self):
+    def send_serialized_msg(self, msg_serialized):
+        self.UDP_conn.send(msg_serialized) # Send status
+
+    def receive_commands_list(self):
+        return self.UDP_conn.recv_select()
+
+    def send_status(self, frame_number):
+        status_msg = MessagesHandler.create_status(frame_number) # Create ctypes status
+        self.logger.info(f"Sending status (frame_id {status_msg.cvStatus.camera2Status.frameId})")
+        msg_serialized = self.serialize_ctypes_struct(status_msg) # Encode status
+        self.send_serialized_msg(msg_serialized) # Send status
+
+    def register_callback(self, name, func):
         pass
-
-    def send_reports(self):
-        pass
-
-if __name__ == "__main__":
-
-    send = False
-    receive = True
-
-    # Create reply
-    def create_reply(isOk, errorCode=0):
-        header = cu_mrg.headerStruct(opCode=cu_mrg.cu_mrg_Opcodes.OPSetCvParamsAckMessage)
-        result = cu_mrg.setCvParamsResultStruct(isOk=isOk, errorCode=errorCode)
-        params_ack_msg = cu_mrg.SetCvParamsAckMessage(header=header, result=result)
-        return params_ack_msg
-
-    def create_status():
+    
+    @staticmethod
+    def serialize_ctypes_struct(ctypes_struct):
+        status_msg_buffer = ctypes.create_string_buffer(ctypes.sizeof(ctypes_struct))
+        ctypes.memmove(status_msg_buffer, ctypes.addressof(ctypes_struct), ctypes.sizeof(ctypes_struct))
+        return status_msg_buffer.raw
+    
+    ### Create messages
+    # Create status
+    @staticmethod
+    def create_status(frame_number):
         header = cu_mrg.headerStruct(opCode=cu_mrg.cu_mrg_Opcodes.OPCvStatusMessage)
 
         # Cam 1 status
-        cam1_status= cu_mrg.cameraControlStruct(frameId=123, cameraOffsetX=2, cameraOffsetY=3, fps=20, bitrateKBs=1000)
+        cam1_status= cu_mrg.cameraControlStruct(frameId=frame_number, cameraOffsetX=2, cameraOffsetY=3, fps=20, bitrateKBs=1000)
         
         # Cam 2 status
-        cam2_status= cu_mrg.cameraControlStruct(frameId=456, cameraOffsetX=4, cameraOffsetY=5, fps=25, bitrateKBs=1500)
+        cam2_status= cu_mrg.cameraControlStruct(frameId=frame_number+100, cameraOffsetX=4, cameraOffsetY=5, fps=25, bitrateKBs=1500)
 
         # Active sensor
         active_sensor = cu_mrg.activateCameraSensors.camera1
@@ -44,6 +57,20 @@ if __name__ == "__main__":
         status_msg = cu_mrg.CvStatusMessage(header=header, cvStatus=cvStatus)
         return status_msg
 
+    # Create params reply
+    @staticmethod
+    def create_reply(isOk, errorCode=0):
+        header = cu_mrg.headerStruct(opCode=cu_mrg.cu_mrg_Opcodes.OPSetCvParamsAckMessage)
+        result = cu_mrg.setCvParamsResultStruct(isOk=isOk, errorCode=errorCode)
+        params_ack_msg = cu_mrg.SetCvParamsAckMessage(header=header, result=result)
+        return params_ack_msg
+    
+    
+
+if __name__ == "__main__":
+
+    send = True
+    receive = True
 
     def parse_msg(msg_buffer, structure_type: ctypes.Structure):
         expected_buffer_len = ctypes.sizeof(structure_type)
@@ -54,31 +81,33 @@ if __name__ == "__main__":
         return msg
 
 
+    # Set logger
+    logger = logging.getLogger("MessageHandler")
+    logger.setLevel(logging.DEBUG)
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.DEBUG)
+    clear_with_time_msec_format = logging.Formatter(fmt='%(asctime)s.%(msecs)03d %(levelname)-8s %(message)s', datefmt='%H:%M:%S')
+    ch.setFormatter(clear_with_time_msec_format)
+    logger.addHandler(ch)
+    logger.info("Welcome to MessageHandler")
 
-
-
-    receive_channel_ip = "192.168.132.212"
-    receive_channel_port = 5100
-    send_channel_ip = "192.168.132.60"
-    send_channel_port = 5101
-    UDP_conn = UDP(receive_channel=(receive_channel_ip, receive_channel_port), send_channel=(send_channel_ip, send_channel_port)) # UDP connection object
+    messages_handler = MessagesHandler(logger)
 
     def send_loop():
-        for i in range(2):
-            status_msg = create_status()
+        for frame_number in range(2):
+            status_msg = MessagesHandler.create_status(frame_number)
             print(f"Sending status (frame_id {status_msg.cvStatus.camera2Status.frameId})")
             
             # Encode status
-            status_msg_buffer = ctypes.create_string_buffer(ctypes.sizeof(status_msg))
-            ctypes.memmove(status_msg_buffer, ctypes.addressof(status_msg), ctypes.sizeof(status_msg))
-            msg_serialized = status_msg_buffer.raw
+            msg_serialized = MessagesHandler.serialize_ctypes_struct(status_msg)
 
-            UDP_conn.send(msg_serialized)
+            messages_handler.send_serialized_msg(msg_serialized)
+
             time.sleep(0.5)
 
     def receiver_loop():
         while True:
-            msg_serialized_list = UDP_conn.recv_select()
+            msg_serialized_list = messages_handler.receive_commands_list()
             #print(f"listening {i}: {msg_serialized_list}")
             for msg_serialized in msg_serialized_list:
                 print(f"Got {msg_serialized}")
@@ -95,15 +124,13 @@ if __name__ == "__main__":
                     msg = parse_msg(msg_serialized, cu_mrg.SetCvParamsCmdMessage)
                     
                     # Create ack
-                    params_result_msg = create_reply(isOk=True)
+                    params_result_msg = MessagesHandler.create_reply(isOk=True)
                     
                     # Encode ack
-                    params_result_buffer = ctypes.create_string_buffer(ctypes.sizeof(params_result_msg))
-                    ctypes.memmove(params_result_buffer, ctypes.addressof(params_result_msg), ctypes.sizeof(params_result_msg))
-                    msg_serialized = params_result_buffer.raw
+                    msg_serialized = MessagesHandler.serialize_ctypes_struct(params_result_msg)
                     
                     # Send Ack
-                    UDP_conn.send(msg_serialized)
+                    messages_handler.send_serialized_msg(msg_serialized)
                     
                 else:
                     print(f"opCode {header.opCode} unknown")
