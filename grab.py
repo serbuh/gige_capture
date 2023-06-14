@@ -216,6 +216,11 @@ class Grabber():
                     break
 
                 frame_number+=1
+
+                # Receive commands / Send reports
+                if self.enable_messages_interface:
+                    self.messages_handler.receive_commands()
+                    self.messages_handler.send_reports()
                 
             except KeyboardInterrupt:
                 self.logger.info("Interrupted by Ctrl+C")
@@ -225,20 +230,6 @@ class Grabber():
             except Exception:
                 import traceback; traceback.print_exc()
                 self.logger.info(f'Exception on frame {self.frame_count_tot}')
-    
-    def send_reports(self):
-        '''
-        Used for the sending status message
-        '''
-        pass
-
-    def check_for_commands(self):
-        '''
-        Check if commands queue has any new commands
-        '''
-        pass
-        # TODO get list of commands from Q
-        # Apply the list of commands
     
     def destroy_all(self):
         

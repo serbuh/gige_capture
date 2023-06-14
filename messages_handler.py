@@ -9,6 +9,12 @@ class MessagesHandler():
     def __init__(self, logger):
         self.logger = logger
         self.logger.info("Init Messages Handler")
+    
+    def receive_commands(self):
+        pass
+
+    def send_reports(self):
+        pass
 
 if __name__ == "__main__":
 
