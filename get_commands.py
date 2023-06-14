@@ -5,7 +5,7 @@ import ctypes
 from ICD import cu_mrg
 from communication.udp import UDP
 
-send = True
+send = False
 receive = True
 
 # Create reply
@@ -44,10 +44,10 @@ def parse_msg(msg_buffer, structure_type: ctypes.Structure):
 
 
 
-receive_channel_ip = "127.0.0.1"
-receive_channel_port = 5005
-send_channel_ip = "127.0.0.1"
-send_channel_port = 5005
+receive_channel_ip = "192.168.132.212"
+receive_channel_port = 5100
+send_channel_ip = "192.168.132.60"
+send_channel_port = 5101
 UDP_conn = UDP(receive_channel=(receive_channel_ip, receive_channel_port), send_channel=(send_channel_ip, send_channel_port)) # UDP connection object
 
 def send_loop():
@@ -64,7 +64,7 @@ def send_loop():
         time.sleep(0.5)
 
 def receiver_loop():
-    for i in range(12):
+    while True:
         msg_serialized_list = UDP_conn.recv_select()
         #print(f"listening {i}: {msg_serialized_list}")
         for msg_serialized in msg_serialized_list:

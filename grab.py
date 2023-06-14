@@ -76,8 +76,10 @@ class Grabber():
 
         # Send frames options
         if self.enable_gst:
-            host = "127.0.0.1"
-            port = 5000
+            host = "192.168.132.60"
+            port = 1212
+            # host = "127.0.0.1"
+            # port = 5000
             self.gst_sender = GstSender(logger, host, port, self.fps, self.send_not_show, from_testvideo=False)
         else:
             self.gst_sender = None
@@ -265,5 +267,5 @@ class FrameGenerator:
 ####################################################################
 file_dir=pathlib.Path().resolve()
 recordings_basedir = os.path.join(file_dir, "recordings")
-grabber = Grabber(save_frames=True, recordings_basedir=recordings_basedir, enable_gst=True, send_not_show=True, show_frames_cv2=False, artificial_frames=False)
+grabber = Grabber(save_frames=False, recordings_basedir=recordings_basedir, enable_gst=True, send_not_show=True, show_frames_cv2=True, artificial_frames=False)
 grabber.grab_loop()
