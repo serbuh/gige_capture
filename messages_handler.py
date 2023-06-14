@@ -60,6 +60,7 @@ class MessagesHandler():
                 elif header_opcode == cu_mrg.cu_mrg_Opcodes.OPSetCvParamsCmdMessage:
                     msg = self.parse_msg(msg_serialized, cu_mrg.SetCvParamsCmdMessage)
                     
+                    # TODO reply from grab.py
                     # Create ack
                     params_result_msg = MessagesHandler.create_reply(isOk=True)
                     # Send Ack
