@@ -141,4 +141,3 @@ class GstSender:
         
     def destroy(self):
         self.pipeline.set_state(Gst.State.NULL)
-        sys.exit()

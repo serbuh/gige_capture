@@ -29,21 +29,14 @@ from gi.repository import Aravis
 
 from gst_handler import GstSender
 from frame_generator import FrameGenerator
+from messages_handler import MessagesHandler
 
 Aravis.enable_interface("Fake")
 
-# Set logger
-logger = logging.getLogger("Grabber")
-logger.setLevel(logging.DEBUG)
-ch = logging.StreamHandler()
-ch.setLevel(logging.DEBUG)
-clear_with_time_msec_format = logging.Formatter(fmt='%(asctime)s.%(msecs)03d %(levelname)-8s %(message)s', datefmt='%H:%M:%S')
-ch.setFormatter(clear_with_time_msec_format)
-logger.addHandler(ch)
-logger.info("Welcome to Grabber")
 
 class Grabber():
-    def __init__(self, save_frames, recordings_basedir, enable_gst, gst_destination, send_not_show, show_frames_cv2, artificial_frames):
+    def __init__(self, logger, save_frames, recordings_basedir, enable_gst, gst_destination, send_not_show, show_frames_cv2, artificial_frames, enable_messages_interface):
+        self.logger = logger
         self.save_frames = save_frames
         self.recordings_basedir = recordings_basedir
         self.enable_gst = enable_gst
@@ -51,6 +44,7 @@ class Grabber():
         self.send_not_show = send_not_show
         self.show_frames_cv2 = show_frames_cv2
         self.artificial_frames = artificial_frames
+        self.enable_messages_interface = enable_messages_interface
         
         # Init FPS variables
         self.frame_count_tot = 0
@@ -74,13 +68,16 @@ class Grabber():
             now = datetime.datetime.now().strftime("%y_%m_%d__%H_%M_%S")
             self.recordings_full_path = os.path.join(self.recordings_basedir, now)
             pathlib.Path(self.recordings_full_path).mkdir(parents=True, exist_ok=True) # Ensure dir existense
-            logger.info(f"Saving frames to:\n{self.recordings_full_path}")
+            self.logger.info(f"Saving frames to:\n{self.recordings_full_path}")
 
         # Send frames options
         if self.enable_gst:
-            self.gst_sender = GstSender(logger, self.gst_destination, self.fps, self.send_not_show, from_testvideo=False)
+            self.gst_sender = GstSender(self.logger, self.gst_destination, self.fps, self.send_not_show, from_testvideo=False)
         else:
             self.gst_sender = None
+        
+        if self.enable_messages_interface:
+            self.messages_handler = MessagesHandler(self.logger)
     
     def init_artificial_grabber(self, fps):
         self.frame_generator = FrameGenerator(640, 480, fps)
@@ -92,10 +89,10 @@ class Grabber():
             else:
                 self.camera = Aravis.Camera.new (None)
         except TypeError:
-            logger.info("No camera found")
+            self.logger.info("No camera found")
             exit()
         except Exception as e:
-            logger.info(f"Some problem with camera: {e}")
+            self.logger.info(f"Some problem with camera: {e}")
             exit()
         
         cam_vendor = self.camera.get_vendor_name()
@@ -126,7 +123,7 @@ class Grabber():
         try:
             self.camera.set_region(x,y,w,h)
         except gi.repository.GLib.Error as e:
-            logger.info(f"{e}\nCould not set camera params. Camera is already in use?")
+            self.logger.info(f"{e}\nCould not set camera params. Camera is already in use?")
             exit()
         self.camera.set_frame_rate(fps)
         self.camera.set_pixel_format(self.pixel_format)
@@ -157,7 +154,7 @@ class Grabber():
 
         # Get raw buffer
         buf = cam_buffer.get_data()
-        #logger.info(f"Bits per pixel {len(buf)/self.height/self.width}")
+        #self.logger.info(f"Bits per pixel {len(buf)/self.height/self.width}")
         if self.pixel_format == Aravis.PIXEL_FORMAT_BAYER_GR_8:
             frame_raw = np.frombuffer(buf, dtype='uint8').reshape( (self.height, self.width) )
 
@@ -165,7 +162,7 @@ class Grabber():
             frame_np = cv2.cvtColor(frame_raw, cv2.COLOR_BayerGR2RGB)
 
         else:
-            logger.info(f"Convertion from {self.pixel_format_string} not supported")
+            self.logger.info(f"Convertion from {self.pixel_format_string} not supported")
             frame_np = None
         
         return frame_np, cam_buffer
@@ -191,7 +188,7 @@ class Grabber():
 
                 if self.save_frames:
                     cv2.imwrite(os.path.join(self.recordings_full_path, f"{frame_number}.tiff"), frame_np)
-                    #logger.info(os.path.join(self.recordings_full_path, f"{frame_number}.tiff"))
+                    #self.logger.info(os.path.join(self.recordings_full_path, f"{frame_number}.tiff"))
                 
                 if self.gst_sender is not None:
                     self.gst_sender.send_frame(frame_np)
@@ -207,7 +204,7 @@ class Grabber():
                 elapsed_time = now-self.start_time
                 if elapsed_time >= 3.0:
                     fps= self.frame_count_fps / elapsed_time
-                    logger.info(f"FPS: {fps}")
+                    self.logger.info(f"FPS: {fps}")
                     # Reset FPS counter
                     self.start_time = now
                     self.frame_count_fps = 0
@@ -215,26 +212,80 @@ class Grabber():
                 # cv2 window key
                 key = cv2.waitKey(1)&0xff
                 if key == ord('q'):
+                    self.destroy_all()
                     break
 
                 frame_number+=1
                 
             except KeyboardInterrupt:
-                logger.info("Interrupted by Ctrl+C")
-                self.camera.stop_acquisition()
-                if self.gst_sender is not None:
-                    self.gst_sender.destroy()
-                exit()
+                self.logger.info("Interrupted by Ctrl+C")
+                self.destroy_all()
+                break
+            
             except Exception:
                 import traceback; traceback.print_exc()
-                logger.info(f'Exception on frame {self.frame_count_tot}')
+                self.logger.info(f'Exception on frame {self.frame_count_tot}')
     
+    def send_reports(self):
+        '''
+        Used for the sending status message
+        '''
+        pass
+
+    def check_for_commands(self):
+        '''
+        Check if commands queue has any new commands
+        '''
+        pass
+        # TODO get list of commands from Q
+        # Apply the list of commands
     
+    def destroy_all(self):
+        
+        self.logger.info("Stop the camera grabbing")
+        try:
+            self.camera.stop_acquisition()
+        except:
+            import traceback; traceback.print_exc()
+            self.logger.info("Exception during closing camera grabbing")
+        
+        self.logger.info("Stop the gstreamer")
+        try:
+            if self.gst_sender is not None:
+                self.gst_sender.destroy()
+        except:
+            import traceback; traceback.print_exc()
+            self.logger.info("Exception during closing gstreamer")
+        
+        self.logger.info("Close cv2 windows")
+        try:
+            cv2.destroyAllWindows()
+        except:
+            import traceback; traceback.print_exc()
+            self.logger.info("Exception during closing cv2 windows")
+
+        self.logger.info("My work here is done")
+
 
 ####################################################################
-file_dir=pathlib.Path().resolve()
-recordings_basedir = os.path.join(file_dir, "recordings")
-#gst_destination = ("127.0.0.1", 5000)
-gst_destination = ("192.168.132.60", 1212)
-grabber = Grabber(save_frames=False, recordings_basedir=recordings_basedir, enable_gst=True, gst_destination=gst_destination, send_not_show=True, show_frames_cv2=True, artificial_frames=True)
-grabber.frames_loop()
+if __name__ == "__main__":
+    # Set logger
+    logger = logging.getLogger("Grabber")
+    logger.setLevel(logging.DEBUG)
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.DEBUG)
+    clear_with_time_msec_format = logging.Formatter(fmt='%(asctime)s.%(msecs)03d %(levelname)-8s %(message)s', datefmt='%H:%M:%S')
+    ch.setFormatter(clear_with_time_msec_format)
+    logger.addHandler(ch)
+    logger.info("Welcome to Grabber")
+
+    # Prepare params
+    file_dir=pathlib.Path().resolve()
+    recordings_basedir = os.path.join(file_dir, "recordings")
+    #gst_destination = ("127.0.0.1", 5000)
+    gst_destination = ("192.168.132.60", 1212)
+
+    # Start grabber
+    grabber = Grabber(logger=logger, save_frames=False, recordings_basedir=recordings_basedir, enable_gst=True, gst_destination=gst_destination, send_not_show=True, show_frames_cv2=True, artificial_frames=False, enable_messages_interface=True)
+    grabber.frames_loop()
+    logger.info("Bye!")
