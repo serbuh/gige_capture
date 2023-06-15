@@ -1,4 +1,4 @@
-<mxfile host="Electron" modified="2023-06-14T16:25:42.179Z" agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/21.3.7 Chrome/112.0.5615.204 Electron/24.5.0 Safari/537.36" etag="4iF5b7XLIiz7HPlFTOhH" version="21.3.7" type="device">
+<mxfile host="Electron" modified="2023-06-15T13:10:21.273Z" agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/21.3.7 Chrome/112.0.5615.204 Electron/24.5.0 Safari/537.36" etag="0os5uBBOM4HTmOUuGw0a" version="21.3.7" type="device">
   <diagram name="Page-1" id="DbOC_s7ybhaEqFvPEaZr">
     <mxGraphModel dx="1703" dy="1204" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
       <root>
@@ -51,10 +51,10 @@
         <mxCell id="xCIMGPuieZ38wntVMGZL-33" value="gst_send()" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" vertex="1" parent="xCIMGPuieZ38wntVMGZL-30">
           <mxGeometry y="78" width="210" height="26" as="geometry" />
         </mxCell>
-        <mxCell id="xCIMGPuieZ38wntVMGZL-121" value="msg_hndlr.send_reports()" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" vertex="1" parent="xCIMGPuieZ38wntVMGZL-30">
+        <mxCell id="xCIMGPuieZ38wntVMGZL-121" value="send_reports()" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" vertex="1" parent="xCIMGPuieZ38wntVMGZL-30">
           <mxGeometry y="104" width="210" height="26" as="geometry" />
         </mxCell>
-        <mxCell id="xCIMGPuieZ38wntVMGZL-122" value="msg_hndlr.receive_commands_list()" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" vertex="1" parent="xCIMGPuieZ38wntVMGZL-30">
+        <mxCell id="xCIMGPuieZ38wntVMGZL-122" value="handle_command(item)" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" vertex="1" parent="xCIMGPuieZ38wntVMGZL-30">
           <mxGeometry y="130" width="210" height="26" as="geometry" />
         </mxCell>
         <mxCell id="xCIMGPuieZ38wntVMGZL-125" value="Commands Callbacks" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=26;fillColor=#ffe6cc;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;whiteSpace=wrap;html=1;strokeColor=#d79b00;swimlaneFillColor=default;" vertex="1" parent="xCIMGPuieZ38wntVMGZL-1">
@@ -62,6 +62,9 @@
         </mxCell>
         <mxCell id="xCIMGPuieZ38wntVMGZL-126" value="set_frame_rate()" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" vertex="1" parent="xCIMGPuieZ38wntVMGZL-125">
           <mxGeometry y="26" width="140" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="xCIMGPuieZ38wntVMGZL-150" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="xCIMGPuieZ38wntVMGZL-1" source="xCIMGPuieZ38wntVMGZL-127" target="xCIMGPuieZ38wntVMGZL-122">
+          <mxGeometry relative="1" as="geometry" />
         </mxCell>
         <mxCell id="xCIMGPuieZ38wntVMGZL-127" value="Commands&lt;br&gt;Queue" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="xCIMGPuieZ38wntVMGZL-1">
           <mxGeometry x="544" y="210.5" width="90" height="50" as="geometry" />

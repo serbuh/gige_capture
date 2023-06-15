@@ -25,6 +25,7 @@ class MessagesHandler():
 
         self.keep_receiving = True
         self.received_msg_queue = None
+        self.receive_thread = None
 
     def start_receiver_thread(self):
         self.receive_thread = threading.Thread(target=self.receive_loop)
@@ -49,31 +50,8 @@ class MessagesHandler():
         while self.keep_receiving:
             msg_serialized_list = self.UDP_conn.recv_select()
             for msg_serialized in msg_serialized_list:
-                header_opcode = MessagesHandler.get_header_opcode(msg_serialized)
                 
-                if self.print_received:
-                    self.logger.debug(f"Got msg with opcode {hex(header_opcode)}:\n{msg_serialized}")
-
-                if header_opcode == cu_mrg.cu_mrg_Opcodes.OPCvStatusMessage: # NOTE: should not get status. We are sending it, not receiving
-                    msg = self.parse_msg(msg_serialized, cu_mrg.CvStatusMessage)
-                    #self.logger.debug(f"Received frame_id {msg.cvStatus.camera2Status.frameId}")
-                elif header_opcode == cu_mrg.cu_mrg_Opcodes.OPSetCvParamsCmdMessage:
-                    msg = self.parse_msg(msg_serialized, cu_mrg.SetCvParamsCmdMessage)
-                    
-                    # TODO reply from grab.py
-                    # Create ack
-                    params_result_msg = MessagesHandler.create_reply(isOk=True)
-                    # Send Ack
-                    messages_handler.send_ctypes_msg(params_result_msg)
-                    
-                else:
-                    print(f"opCode {header_opcode} unknown")
-                    msg = None
-                    continue
-                
-                # in case of existing opcode put the item in the queue
-                if self.received_msg_queue is not None:
-                    self.received_msg_queue.put_nowait(msg)
+                self.parse_command(msg_serialized)
 
             time.sleep(0.01)
 
@@ -93,6 +71,32 @@ class MessagesHandler():
         header = cu_mrg.headerStruct.from_buffer_copy(msg_serialized[:header_len])
         return header.opCode
 
+    def parse_command(self, msg_serialized):
+        header_opcode = MessagesHandler.get_header_opcode(msg_serialized)
+                
+        if self.print_received:
+            self.logger.debug(f"Got msg with opcode {hex(header_opcode)}:\n{msg_serialized}")
+
+        if header_opcode == cu_mrg.cu_mrg_Opcodes.OPCvStatusMessage: # NOTE: should not get status. We are sending it, not receiving
+            msg = self.parse_msg(msg_serialized, cu_mrg.CvStatusMessage)
+            #self.logger.debug(f"Received frame_id {msg.cvStatus.camera2Status.frameId}")
+        elif header_opcode == cu_mrg.cu_mrg_Opcodes.OPSetCvParamsCmdMessage:
+            msg = self.parse_msg(msg_serialized, cu_mrg.SetCvParamsCmdMessage)
+            
+            # TODO reply from grab.py
+            # Create ack
+            params_result_msg = MessagesHandler.create_reply(isOk=True)
+            # Send Ack
+            messages_handler.send_ctypes_msg(params_result_msg)
+            
+        else:
+            print(f"opCode {header_opcode} unknown")
+            return
+        
+        # Put in Queue (if valid opcode)
+        if self.received_msg_queue is not None:
+            self.received_msg_queue.put_nowait(msg)
+    
     def parse_msg(self, msg_buffer, structure_type: ctypes.Structure):
         expected_buffer_len = ctypes.sizeof(structure_type)
         if len(msg_buffer) != expected_buffer_len:
@@ -100,7 +104,7 @@ class MessagesHandler():
 
         msg = structure_type.from_buffer_copy(msg_buffer)
         return msg
-    
+        
     ### Messages
     def send_status(self, frame_number):
         status_msg = MessagesHandler.create_status(frame_number) # Create ctypes status

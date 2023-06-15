@@ -227,8 +227,7 @@ class Grabber():
                     self.messages_handler.send_status(frame_number)
                     while not self.new_messages_queue.empty():
                         item = self.new_messages_queue.get_nowait()
-                        print(f"Caught {item}")
-                        # TODO apply command
+                        self.handle_command(item)
                 
             except KeyboardInterrupt:
                 self.logger.info("Interrupted by Ctrl+C")
@@ -239,6 +238,10 @@ class Grabber():
                 import traceback; traceback.print_exc()
                 self.logger.info(f'Exception on frame {self.frame_count_tot}')
     
+    def handle_command(self, item):
+        print(f"Handle {item}")
+        # TODO apply command
+
     def change_fps(self, new_fps):
         self.logger.info(f"TODO: Change fps to {new_fps}")
 
