@@ -58,7 +58,7 @@ tmux set-option -w -t 0 remain-on-exit on
 
 if $run_client; then
   # Run client
-  run_cmd='python client.py'
+  run_cmd='python client/client.py'
   tmux split-window -t $tmux_session_name $run_cmd
 
   # Return to server's pane
