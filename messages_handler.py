@@ -6,6 +6,7 @@ import logging
 
 from ICD import cu_mrg
 from communication.udp import UDP
+from ICD import cv_structs
 
 class MessagesHandler():
     def __init__(self, logger, print_received=False):
@@ -85,7 +86,7 @@ class MessagesHandler():
             
             # TODO reply from grab.py
             # Create ack
-            params_result_msg = MessagesHandler.create_reply(isOk=True)
+            params_result_msg = cv_structs.create_reply(isOk=True)
             # Send Ack
             messages_handler.send_ctypes_msg(params_result_msg)
             
@@ -107,36 +108,10 @@ class MessagesHandler():
         
     ### Messages
     def send_status(self, frame_number):
-        status_msg = MessagesHandler.create_status(frame_number) # Create ctypes status
+        status_msg = cv_structs.create_status(frame_number, frame_number+100) # Create ctypes status
         #self.logger.info(f"Sending status (frame_id {status_msg.cvStatus.camera2Status.frameId})")
         self.send_ctypes_msg(status_msg) # Send status
 
-    # Create status
-    @staticmethod
-    def create_status(frame_number):
-        header = cu_mrg.headerStruct(opCode=cu_mrg.cu_mrg_Opcodes.OPCvStatusMessage)
-
-        # Cam 1 status
-        cam1_status= cu_mrg.cameraControlStruct(frameId=frame_number, cameraOffsetX=2, cameraOffsetY=3, fps=20, bitrateKBs=1000)
-        
-        # Cam 2 status
-        cam2_status= cu_mrg.cameraControlStruct(frameId=frame_number+100, cameraOffsetX=4, cameraOffsetY=5, fps=25, bitrateKBs=1500)
-
-        # Active sensor
-        active_sensor = cu_mrg.activateCameraSensors.camera1
-
-        cvStatus = cu_mrg.cvStatusStruct(camera1Status=cam1_status, camera2Status=cam2_status, selectedCameraSensors=active_sensor)
-        status_msg = cu_mrg.CvStatusMessage(header=header, cvStatus=cvStatus)
-        return status_msg
-
-    # Create params reply
-    @staticmethod
-    def create_reply(isOk, errorCode=0):
-        header = cu_mrg.headerStruct(opCode=cu_mrg.cu_mrg_Opcodes.OPSetCvParamsAckMessage)
-        result = cu_mrg.setCvParamsResultStruct(isOk=isOk, errorCode=errorCode)
-        params_ack_msg = cu_mrg.SetCvParamsAckMessage(header=header, result=result)
-        return params_ack_msg
-    
     
 
 if __name__ == "__main__":
@@ -163,7 +138,7 @@ if __name__ == "__main__":
     # Simulate sending
     def simulate_status_loop():
         for frame_number in range(2):
-            status_msg = MessagesHandler.create_status(frame_number)
+            status_msg = cv_structs.create_status(frame_number, frame_number+100)
             messages_handler.send_ctypes_msg(status_msg)
             time.sleep(2.5)
             

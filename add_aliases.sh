@@ -18,5 +18,7 @@ echo "Adding aliases to bashrc..."
 
 echo -e '\n#CV Proj aliases\n' | tee -a ~/.bashrc
 echo "alias vir=\"cd ${PATH_TO_PROJ}; source env/bin/activate\"                   # Activate virtualenv" | tee -a ~/.bashrc
-echo "alias  rr=\"cd ${PATH_TO_PROJ}; python grab.py\"                            # Run" | tee -a ~/.bashrc
+echo "alias  rr=\"cd ${PATH_TO_PROJ}; ./run_tmux.sh\"                             # Run" | tee -a ~/.bashrc
+echo "alias rrc=\"cd ${PATH_TO_PROJ}; ./run_tmux.sh -c\"                          # Run with client" | tee -a ~/.bashrc
+echo "alias  kk=\"cd ${PATH_TO_PROJ}; ./run_tmux.sh -k\"                          # Kill all" | tee -a ~/.bashrc
 echo "Finished (Don't forget to run 'source ~/.bashrc')"
