@@ -9,9 +9,9 @@ from communication.udp import UDP
 from ICD import cv_structs
 
 class Communicator():
-    def __init__(self, logger, receive_channel, send_channel, parse_msg_callback):
+    def __init__(self, logger, receive_channel, send_channel, handle_ctypes_msg_callback):
         self.logger = logger
-        self.parse_msg_callback = parse_msg_callback
+        self.handle_ctypes_msg_callback = handle_ctypes_msg_callback
         self.logger.info("Init Communicator")
 
         # Check receive channel validity
@@ -60,8 +60,8 @@ class Communicator():
         while self.keep_receiving:
             msg_serialized_list = self.UDP_conn.recv_select()
             for msg_serialized in msg_serialized_list:
-                
-                self.parse_msg_callback(msg_serialized)
+                msg = self.deserialize_to_ctypes(msg_serialized) # Try to deserialize
+                self.handle_ctypes_msg_callback(msg)
 
             time.sleep(0.01)
 
@@ -79,7 +79,28 @@ class Communicator():
         header = cu_mrg.headerStruct.from_buffer_copy(msg_serialized[:header_len])
         return header.opCode
     
-    def parse_msg(self, msg_buffer, structure_type: ctypes.Structure):
+    def deserialize_to_ctypes(self, msg_serialized):
+        header_opcode = self.get_header_opcode(msg_serialized)
+        
+        if False:
+            self.logger.debug(f"Got msg with opcode {hex(header_opcode)}:\n{msg_serialized}")
+
+        # Get msg_type
+        if header_opcode == cu_mrg.cu_mrg_Opcodes.OPCvStatusMessage:
+            msg_type = cu_mrg.CvStatusMessage
+        elif header_opcode == cu_mrg.cu_mrg_Opcodes.OPSetCvParamsCmdMessage:
+            msg_type = cu_mrg.SetCvParamsCmdMessage
+        elif header_opcode == cu_mrg.cu_mrg_Opcodes.OPSetCvParamsAckMessage:
+            msg_type = cu_mrg.SetCvParamsAckMessage
+        else:
+            self.logger.error(f"opCode {header_opcode} unknown")
+            return None
+
+        msg = self.deserialize_to_known_type(msg_serialized, msg_type)
+
+        return msg
+
+    def deserialize_to_known_type(self, msg_buffer, structure_type: ctypes.Structure):
         expected_buffer_len = ctypes.sizeof(structure_type)
         if len(msg_buffer) != expected_buffer_len:
             self.logger.error(f"len(msg_buffer) = {len(msg_buffer)} != {expected_buffer_len} = expected_buffer_len")
@@ -102,13 +123,13 @@ if __name__ == "__main__":
     logger.addHandler(ch)
     logger.info("Welcome to MessageHandler")
 
-    def parse_msg_callback(item):
-        print(f"Got {item}")
+    def handle_ctypes_msg_callback(msg):
+        print(f"Got {msg}")
 
     receive_channel = ("127.0.0.1", 5101)
     send_channel = ("127.0.0.1", 5101)
 
-    communicator = Communicator(logger, receive_channel, send_channel, parse_msg_callback)
+    communicator = Communicator(logger, receive_channel, send_channel, handle_ctypes_msg_callback)
     communicator.start_receiver_thread() # Start receiver loop
     
     # Simulate sending

@@ -11,13 +11,13 @@ class Client():
     def __init__(self, logger):
         self.logger = logger
 
-        def parse_msg_callback(item):
-            print(f"Got {item}")
+        def handle_msg(msg):
+            print(f"Got {msg}")
 
         receive_reports_channel = ("127.0.0.1", 5101)
         send_cmds_channel = ("127.0.0.1", 5100)
 
-        self.communicator = Communicator(logger, receive_reports_channel, send_cmds_channel, parse_msg_callback)
+        self.communicator = Communicator(logger, receive_reports_channel, send_cmds_channel, handle_msg)
         self.communicator.start_receiver_thread() # Start receiver loop
 
     def init_gui(self):

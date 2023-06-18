@@ -82,7 +82,7 @@ class Grabber():
         
         # UDP ctypes messages interface
         if self.enable_messages_interface:
-            self.communicator = Communicator(self.logger, receive_cmds_channel, send_reports_channel, self.parse_command)
+            self.communicator = Communicator(self.logger, receive_cmds_channel, send_reports_channel, self.handle_msg)
             self.new_messages_queue = queue.Queue()
             self.communicator.set_receive_queue(self.new_messages_queue)
             self.communicator.register_callback("change_fps", self.change_fps)
@@ -293,27 +293,22 @@ class Grabber():
 
         self.logger.info("My work here is done")
 
-    def parse_command(self, msg_serialized):
-        header_opcode = self.communicator.get_header_opcode(msg_serialized)
+    def handle_msg(self, msg_serialized):
+        msg = self.communicator.deserialize_to_ctypes(msg_serialized)
                 
-        if False:
-            self.logger.debug(f"Got msg with opcode {hex(header_opcode)}:\n{msg_serialized}")
+        if msg is None:
+            self.logger.error("Invalid message. Ignoring")
+            return
 
-        if header_opcode == cu_mrg.cu_mrg_Opcodes.OPCvStatusMessage: # NOTE: should not get status. We are sending it, not receiving
-            msg = self.communicator.parse_msg(msg_serialized, cu_mrg.CvStatusMessage)
-            #self.logger.debug(f"Received frame_id {msg.cvStatus.camera2Status.frameId}")
-        elif header_opcode == cu_mrg.cu_mrg_Opcodes.OPSetCvParamsCmdMessage:
-            msg = self.communicator.parse_msg(msg_serialized, cu_mrg.SetCvParamsCmdMessage)
+        elif type(msg) == cu_mrg.SetCvParamsCmdMessage:
             
-            # TODO reply from grab.py
             # Create ack
             params_result_msg = cv_structs.create_reply(isOk=True)
             # Send Ack
             self.communicator.send_ctypes_msg(params_result_msg)
-            
+        
         else:
-            print(f"opCode {header_opcode} unknown")
-            return
+            self.logger.warning(f"Trying to handle unknown msg type {type(msg)}")
         
         # Put in Queue (if valid opcode)
         if self.communicator.received_msg_queue is not None:
