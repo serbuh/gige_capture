@@ -5,7 +5,7 @@ import logging
 
 
 from ICD import cu_mrg
-from communication.udp import UDP
+from communication.udp_imp import UDP
 from ICD import cv_structs
 
 class Communicator():
