@@ -17,7 +17,7 @@ class Client():
         receive_reports_channel = ("127.0.0.1", 5101)
         send_cmds_channel = ("127.0.0.1", 5100)
 
-        self.communicator = Communicator(logger, receive_reports_channel, send_cmds_channel, parse_msg_callback, print_received= True)
+        self.communicator = Communicator(logger, receive_reports_channel, send_cmds_channel, parse_msg_callback)
         self.communicator.start_receiver_thread() # Start receiver loop
 
     def init_gui(self):
@@ -37,11 +37,6 @@ class Client():
         fps_textbox.grid(row=0, column=1)
 
         window.mainloop()
-
-    # Simulate sending
-    def send_status(self):
-        status_msg = cv_structs.create_reply(True)
-        self.communicator.send_ctypes_msg(status_msg)
 
 
 if __name__=='__main__':

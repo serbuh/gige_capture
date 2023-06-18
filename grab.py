@@ -30,7 +30,9 @@ from gi.repository import Aravis
 
 from gst_handler import GstSender
 from frame_generator import FrameGenerator
-from messages_handler import MessagesHandler
+from ICD import cv_structs
+from communication.udp_communicator import Communicator
+from ICD import cu_mrg
 from ICD import cv_structs
 
 Aravis.enable_interface("Fake")
@@ -78,12 +80,18 @@ class Grabber():
         else:
             self.gst_sender = None
         
+        # UDP ctypes messages interface
         if self.enable_messages_interface:
-            self.messages_handler = MessagesHandler(self.logger, receive_cmds_channel, send_reports_channel, print_received=True)
+            self.communicator = Communicator(self.logger, receive_cmds_channel, send_reports_channel, self.parse_command)
             self.new_messages_queue = queue.Queue()
-            self.messages_handler.set_receive_queue(self.new_messages_queue)
-            self.messages_handler.register_callback("change_fps", self.change_fps)
-            self.messages_handler.start_receive()
+            self.communicator.set_receive_queue(self.new_messages_queue)
+            self.communicator.register_callback("change_fps", self.change_fps)
+            self.communicator.start_receiver_thread() # Start receiver loop
+            
+        else:
+            self.communicator = None
+
+            
     
     def init_artificial_grabber(self, fps):
         self.frame_generator = FrameGenerator(640, 480, fps)
@@ -227,7 +235,8 @@ class Grabber():
                 if self.enable_messages_interface:
                     # Send status
                     status_msg = cv_structs.create_status(frame_number, frame_number+100) # Create ctypes status
-                    self.messages_handler.send_ctypes_report(status_msg) # Send status
+                    
+                    self.communicator.send_ctypes_msg(status_msg) # Send status
                     
                     # Read receive queue
                     while not self.new_messages_queue.empty():
@@ -254,7 +263,8 @@ class Grabber():
         
         self.logger.info("Stop the messages receiver thread")
         try:
-            self.messages_handler.destroy_communication()
+            if self.communicator is not None:
+                self.communicator.stop_receiver_thread()
         except:
             import traceback; traceback.print_exc()
             self.logger.info("Exception during stopping the receiver thread")
@@ -282,6 +292,32 @@ class Grabber():
             self.logger.info("Exception during closing cv2 windows")
 
         self.logger.info("My work here is done")
+
+    def parse_command(self, msg_serialized):
+        header_opcode = self.communicator.get_header_opcode(msg_serialized)
+                
+        if False:
+            self.logger.debug(f"Got msg with opcode {hex(header_opcode)}:\n{msg_serialized}")
+
+        if header_opcode == cu_mrg.cu_mrg_Opcodes.OPCvStatusMessage: # NOTE: should not get status. We are sending it, not receiving
+            msg = self.communicator.parse_msg(msg_serialized, cu_mrg.CvStatusMessage)
+            #self.logger.debug(f"Received frame_id {msg.cvStatus.camera2Status.frameId}")
+        elif header_opcode == cu_mrg.cu_mrg_Opcodes.OPSetCvParamsCmdMessage:
+            msg = self.communicator.parse_msg(msg_serialized, cu_mrg.SetCvParamsCmdMessage)
+            
+            # TODO reply from grab.py
+            # Create ack
+            params_result_msg = cv_structs.create_reply(isOk=True)
+            # Send Ack
+            self.communicator.send_ctypes_msg(params_result_msg)
+            
+        else:
+            print(f"opCode {header_opcode} unknown")
+            return
+        
+        # Put in Queue (if valid opcode)
+        if self.communicator.received_msg_queue is not None:
+            self.communicator.received_msg_queue.put_nowait(msg)
 
 
 ####################################################################

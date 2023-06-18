@@ -9,10 +9,9 @@ from communication.udp import UDP
 from ICD import cv_structs
 
 class Communicator():
-    def __init__(self, logger, receive_channel, send_channel, parse_msg_callback, print_received=False):
+    def __init__(self, logger, receive_channel, send_channel, parse_msg_callback):
         self.logger = logger
         self.parse_msg_callback = parse_msg_callback
-        self.print_received = print_received
         self.logger.info("Init Communicator")
 
         # Check receive channel validity
@@ -80,6 +79,13 @@ class Communicator():
         header = cu_mrg.headerStruct.from_buffer_copy(msg_serialized[:header_len])
         return header.opCode
     
+    def parse_msg(self, msg_buffer, structure_type: ctypes.Structure):
+        expected_buffer_len = ctypes.sizeof(structure_type)
+        if len(msg_buffer) != expected_buffer_len:
+            self.logger.error(f"len(msg_buffer) = {len(msg_buffer)} != {expected_buffer_len} = expected_buffer_len")
+
+        msg = structure_type.from_buffer_copy(msg_buffer)
+        return msg
 
 if __name__ == "__main__":
 
@@ -102,7 +108,7 @@ if __name__ == "__main__":
     receive_channel = ("127.0.0.1", 5101)
     send_channel = ("127.0.0.1", 5101)
 
-    communicator = Communicator(logger, receive_channel, send_channel, parse_msg_callback, print_received=True)
+    communicator = Communicator(logger, receive_channel, send_channel, parse_msg_callback)
     communicator.start_receiver_thread() # Start receiver loop
     
     # Simulate sending
