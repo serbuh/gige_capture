@@ -82,7 +82,7 @@ class Grabber():
         
         # UDP ctypes messages interface
         if self.enable_messages_interface:
-            self.communicator = Communicator(self.logger, receive_cmds_channel, send_reports_channel, self.handle_msg)
+            self.communicator = Communicator(self.logger, receive_cmds_channel, send_reports_channel, self.handle_ctypes_msg_callback)
             self.new_messages_queue = queue.Queue()
             self.communicator.set_receive_queue(self.new_messages_queue)
             self.communicator.register_callback("change_fps", self.change_fps)
@@ -291,8 +291,7 @@ class Grabber():
 
         self.logger.info("My work here is done")
 
-    def handle_msg(self, msg_serialized):
-        msg = self.communicator.deserialize_to_ctypes(msg_serialized)
+    def handle_ctypes_msg_callback(self, msg):
         if msg is None:
             self.logger.error("Invalid message. Ignoring")
             return
@@ -333,8 +332,8 @@ if __name__ == "__main__":
     #receive_channel = ("192.168.132.212", 5100)
     #send_channel = ("192.168.132.60", 5101)
 
-    receive_cmds_channel = ("127.0.0.1", 5100)
-    send_reports_channel = ("127.0.0.1", 5101)
+    receive_cmds_channel = ("127.0.0.1", 5111)
+    send_reports_channel = ("127.0.0.1", 5111)
     
     # Start grabber
     grabber = Grabber(logger, receive_cmds_channel, send_reports_channel, save_frames=False, recordings_basedir=recordings_basedir, enable_gst=True, gst_destination=gst_destination, send_not_show=True, show_frames_cv2=True, artificial_frames=False, enable_messages_interface=True)

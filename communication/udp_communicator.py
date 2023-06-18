@@ -60,6 +60,7 @@ class Communicator():
         while self.keep_receiving:
             msg_serialized_list = self.UDP_conn.recv_select()
             for msg_serialized in msg_serialized_list:
+                print("GOT")
                 msg = self.deserialize_to_ctypes(msg_serialized) # Try to deserialize
                 self.handle_ctypes_msg_callback(msg)
 

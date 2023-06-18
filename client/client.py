@@ -15,7 +15,7 @@ class Client():
             print(f"Got {msg}")
 
         receive_reports_channel = ("127.0.0.1", 5101)
-        send_cmds_channel = ("127.0.0.1", 5100)
+        send_cmds_channel = ("127.0.0.1", 5111)
 
         self.communicator = Communicator(logger, receive_reports_channel, send_cmds_channel, handle_msg)
         self.communicator.start_receiver_thread() # Start receiver loop
