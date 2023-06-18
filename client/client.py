@@ -2,8 +2,8 @@ import logging
 import time
 import threading
 
-from ICD import cu_mrg
-from communication.udp import UDP
+from ICD import cv_structs
+from communication.udp_communicator import Communicator
 
 if __name__=='__main__':
     
@@ -16,30 +16,22 @@ if __name__=='__main__':
     ch.setFormatter(clear_with_time_msec_format)
     logger.addHandler(ch)
     logger.info("Welcome to Client Simulator")
-
-    receive_channel_ip = "127.0.0.1"
-    receive_channel_port = 5005
-    send_channel_ip = "127.0.0.1"
-    send_channel_port = 5005
-    UDP_conn = UDP(receive_channel=(receive_channel_ip, receive_channel_port), send_channel=(send_channel_ip, send_channel_port)) # UDP connection object
     
-    def send_loop():
-        for i in range(10):
-            msg_serialized = UDP.serialize(i)
-            UDP_conn.send(msg_serialized)
-            time.sleep(0.5)
-    
-    def receiver_loop():
-        for i in range(12):
-            msg_serialized_list = UDP_conn.recv_select()
-            #print(f"listening {i}: {msg_serialized_list}")
-            for msg_serialized in msg_serialized_list:
-                print(f"Got\n{UDP.deserialize(msg_serialized)}")
-            time.sleep(0.5)
-            
+    receive_reports_channel = ("127.0.0.1", 5101)
+    send_cmds_channel = ("127.0.0.1", 5100)
 
-    send_thread = threading.Thread(target=send_loop)
+    def parse_msg_callback(item):
+        print(f"Got {item}")
+
+    communicator = Communicator(logger, receive_reports_channel, send_cmds_channel, parse_msg_callback, print_received= True)
+    communicator.start_receiver_thread() # Start receiver loop
+
+    # Simulate sending
+    def simulate_status_loop():
+        for frame_number in range(2):
+            status_msg = cv_structs.create_status(frame_number, frame_number+100)
+            communicator.send_ctypes_msg(status_msg)
+            time.sleep(2.5)
+
+    send_thread = threading.Thread(target=simulate_status_loop)
     send_thread.start()
-
-    receive_thread = threading.Thread(target=receiver_loop)
-    receive_thread.start()

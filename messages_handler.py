@@ -5,9 +5,9 @@ import logging
 
 
 from ICD import cu_mrg
+from ICD import cv_structs
 from communication.udp_communicator import Communicator
 
-from ICD import cv_structs
 
 class MessagesHandler():
     def __init__(self, logger, receive_channel, send_channel, print_received=False):

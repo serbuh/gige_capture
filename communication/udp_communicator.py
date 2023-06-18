@@ -26,7 +26,6 @@ class Communicator():
             self.logger.info(f"Open send channel: {send_channel}")
         else:
             raise Exception(f"Invalid send channel definition: {send_channel}")
-
         
         
         # Init udp sockets

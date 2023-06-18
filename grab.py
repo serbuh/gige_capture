@@ -300,7 +300,7 @@ if __name__ == "__main__":
     #receive_channel = ("192.168.132.212", 5100)
     #send_channel = ("192.168.132.60", 5101)
 
-    receive_cmds_channel = ("127.0.0.1", 5101)
+    receive_cmds_channel = ("127.0.0.1", 5100)
     send_reports_channel = ("127.0.0.1", 5101)
     
     # Start grabber
