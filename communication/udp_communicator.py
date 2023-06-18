@@ -79,14 +79,6 @@ class Communicator():
         header_len = ctypes.sizeof(cu_mrg.headerStruct)
         header = cu_mrg.headerStruct.from_buffer_copy(msg_serialized[:header_len])
         return header.opCode
-
-        
-    ### Messages
-    def send_status(self, frame_number):
-        status_msg = cv_structs.create_status(frame_number, frame_number+100) # Create ctypes status
-        #self.logger.info(f"Sending status (frame_id {status_msg.cvStatus.camera2Status.frameId})")
-        self.send_ctypes_msg(status_msg) # Send status
-
     
 
 if __name__ == "__main__":

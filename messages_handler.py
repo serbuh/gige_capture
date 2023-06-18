@@ -18,9 +18,6 @@ class MessagesHandler():
         self.communicator = Communicator(self.logger, receive_channel, send_channel, self.parse_command, self.print_received)
 
     def start_receive(self):
-        '''
-        Actually starts the receiver thread
-        '''
         self.communicator.start_receiver_thread()
     
     def set_receive_queue(self, queue):
@@ -31,6 +28,9 @@ class MessagesHandler():
 
     def destroy_communication(self):
         self.communicator.stop_receiver_thread()
+    
+    def send_ctypes_report(self, ctypes_msg):
+        self.communicator.send_ctypes_msg(ctypes_msg)
 
     def parse_command(self, msg_serialized):
         header_opcode = self.communicator.get_header_opcode(msg_serialized)
@@ -65,13 +65,6 @@ class MessagesHandler():
 
         msg = structure_type.from_buffer_copy(msg_buffer)
         return msg
-        
-    ### Messages
-    def send_status(self, frame_number):
-        status_msg = cv_structs.create_status(frame_number, frame_number+100) # Create ctypes status
-        #self.logger.info(f"Sending status (frame_id {status_msg.cvStatus.camera2Status.frameId})")
-        self.communicator.send_ctypes_msg(status_msg) # Send status
-
     
 
 if __name__ == "__main__":

@@ -31,6 +31,7 @@ from gi.repository import Aravis
 from gst_handler import GstSender
 from frame_generator import FrameGenerator
 from messages_handler import MessagesHandler
+from ICD import cv_structs
 
 Aravis.enable_interface("Fake")
 
@@ -224,7 +225,11 @@ class Grabber():
 
                 # Receive commands / Send reports
                 if self.enable_messages_interface:
-                    self.messages_handler.send_status(frame_number)
+                    # Send status
+                    status_msg = cv_structs.create_status(frame_number, frame_number+100) # Create ctypes status
+                    self.messages_handler.send_ctypes_report(status_msg) # Send status
+                    
+                    # Read receive queue
                     while not self.new_messages_queue.empty():
                         item = self.new_messages_queue.get_nowait()
                         self.handle_command(item)
