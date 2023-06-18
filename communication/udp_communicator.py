@@ -50,6 +50,8 @@ class Communicator():
     
     def send_ctypes_msg(self, ctypes_msg):
         # Serialize ctypes
+        if True:
+            self.logger.debug(f"Sending:\n{ctypes_msg}")
         msg_serialized = self.serialize_ctypes(ctypes_msg)
         self.UDP_conn.send(msg_serialized) # Send status
 
@@ -135,7 +137,7 @@ if __name__ == "__main__":
     # Simulate sending
     def simulate_status_loop():
         for frame_number in range(2):
-            status_msg = cv_structs.create_status(20, 25, frame_number, frame_number+100)
+            status_msg = cv_structs.create_status(frame_number, frame_number+100, fps_1=20, fps_2=25, bitrateKBs_1=10, bitrateKBs_2=10)
             communicator.send_ctypes_msg(status_msg)
             time.sleep(2.5)
             

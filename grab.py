@@ -235,7 +235,7 @@ class Grabber():
                 if self.enable_messages_interface:
                     # Send status
                     if self.send_status:
-                        status_msg = cv_structs.create_status(int(self.last_fps), int(self.last_fps), frame_number, frame_number) # Create ctypes status
+                        status_msg = cv_structs.create_status(frame_number, frame_number, int(self.last_fps), int(self.last_fps), bitrateKBs_1=10, bitrateKBs_2=10) # Create ctypes status
                         self.communicator.send_ctypes_msg(status_msg) # Send status
                     
                     # Read receive queue
