@@ -22,8 +22,9 @@ class Client():
 
     def init_gui(self):
         def print_text():
-            text = fps_textbox.get("1.0", "end-1c")
-            print(text)
+            fps_1 = self.fps_1_textbox.get("1.0", "end-1c")
+            fps_2 = self.fps_2_textbox.get("1.0", "end-1c")
+            print(f"New FPS: {fps_1}, {fps_2}")
 
         # Create the main window
         window = tk.Tk()
@@ -33,10 +34,20 @@ class Client():
         fps_button.grid(row=0, column=0)
 
         # Create the textbox
-        fps_textbox = tk.Text(window, height=1)
-        fps_textbox.grid(row=0, column=1)
+        self.fps_1_textbox = tk.Text(window, height=1, width=10)
+        self.fps_1_textbox.grid(row=0, column=1)
+
+        self.fps_2_textbox = tk.Text(window, height=1, width=10)
+        self.fps_2_textbox.grid(row=0, column=2)
 
         window.mainloop()
+    
+    def change_fps(self):
+        fps_1 = self.fps_1_textbox.get("1.0", "end-1c")
+        fps_2 = self.fps_2_textbox.get("1.0", "end-1c")
+        print(f"New FPS: {fps_1}, {fps_2}")
+        cv_command = cv_structs.create_cv_command(fps_1, fps_2, bitrateKBs_1=1000, bitrateKBs_2=1000, active_sensor=1)
+        self.communicator.send_ctypes_msg(cv_command)
 
 
 if __name__=='__main__':

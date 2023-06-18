@@ -91,8 +91,6 @@ class Grabber():
         else:
             self.communicator = None
 
-            
-    
     def init_artificial_grabber(self, fps):
         self.frame_generator = FrameGenerator(640, 480, fps)
 
@@ -295,7 +293,6 @@ class Grabber():
 
     def handle_msg(self, msg_serialized):
         msg = self.communicator.deserialize_to_ctypes(msg_serialized)
-                
         if msg is None:
             self.logger.error("Invalid message. Ignoring")
             return
@@ -303,7 +300,7 @@ class Grabber():
         elif type(msg) == cu_mrg.SetCvParamsCmdMessage:
             
             # Create ack
-            params_result_msg = cv_structs.create_reply(isOk=True)
+            params_result_msg = cv_structs.create_cv_command_ack(isOk=True)
             # Send Ack
             self.communicator.send_ctypes_msg(params_result_msg)
         
