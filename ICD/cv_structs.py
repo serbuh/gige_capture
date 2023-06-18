@@ -6,14 +6,23 @@ class vision_status_msg(cu_mrg.CvStatusMessage):
 
 class client_set_params_msg(cu_mrg.SetCvParamsCmdMessage):
     def __str__(self):
-        return f"{self.cvParams.camera1Control.frameId}"
+        cam_info= lambda cam : f"Frame {cam.frameId} @ {cam.fps} [Hz] bitrate {cam.bitrateKBs} offset({cam.cameraOffsetX}, {cam.cameraOffsetX})"
+        cam_1_str = cam_info(self.cvParams.camera1Control)
+        cam_2_str = cam_info(self.cvParams.camera2Control)
+        if self.cvParams.selectedCameraSensors.value == cu_mrg.activateCameraSensors.camera1:
+            active_cam = "1"
+        elif self.cvParams.selectedCameraSensors.value == cu_mrg.activateCameraSensors.camera2:
+            active_cam = "2"
+        elif self.cvParams.selectedCameraSensors.value == cu_mrg.activateCameraSensors.camera1And2:
+            active_cam = "1 and 2"
+        return f"{cam_1_str}\n{cam_2_str}\nActive Cam: {active_cam}"
 
 class vision_set_params_ack_msg(cu_mrg.SetCvParamsAckMessage):
     def __str__(self):
         if self.result.isOk.value==self.result.isOk.TRUE_:
             res_str="Ok"
         else:
-            res_str=f"Error({self.result.errorCode})"
+            res_str=f"errorCode({self.result.errorCode})"
         return f"ACK ({res_str})"
 
 # Create status

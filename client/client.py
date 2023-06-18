@@ -12,7 +12,7 @@ class Client():
         self.logger = logger
 
         def handle_msg(msg):
-            self.logger.info(f">> Got {msg}") # Client
+            self.logger.info(f">> Got:\n{msg}") # Client
 
         receive_reports_channel = ("127.0.0.1", 5111)
         send_cmds_channel = ("127.0.0.1", 5100)

@@ -253,7 +253,7 @@ class Grabber():
                 self.logger.info(f'Exception on frame {self.frame_count_tot}')
     
     def handle_command(self, item):
-        self.logger.info(f">> Handle {item}") # Server
+        self.logger.info(f">> Handle {type(item)}") # Server
 
     def change_fps(self, new_fps):
         self.logger.info(f"TODO: Change fps to {new_fps}")
@@ -293,12 +293,13 @@ class Grabber():
         self.logger.info("My work here is done")
 
     def handle_ctypes_msg_callback(self, msg):
-        self.logger.info(f">> Got {msg}") # Server
+        self.logger.info(f">> Got:\n{msg}") # Server
+        
         if msg is None:
             self.logger.error("Invalid message. Ignoring")
             return
 
-        elif type(msg) == cv_structs.client_set_params_msg:
+        elif isinstance(msg, cv_structs.client_set_params_msg):
             
             # TODO do things
             
@@ -307,7 +308,7 @@ class Grabber():
             # Send Ack
             self.communicator.send_ctypes_msg(params_result_msg)
         
-        elif type(msg) == cv_structs.vision_status_msg:
+        elif isinstance(msg, cv_structs.vision_status_msg):
             self.logger.warning(f"got vision status from ourselves?")
         
         else:
