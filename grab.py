@@ -49,6 +49,7 @@ class Grabber():
         self.show_frames_cv2 = show_frames_cv2
         self.artificial_frames = artificial_frames
         self.enable_messages_interface = enable_messages_interface
+        self.send_status = False
         
         # Init FPS variables
         self.frame_count_tot = 0
@@ -232,9 +233,9 @@ class Grabber():
                 # Receive commands / Send reports
                 if self.enable_messages_interface:
                     # Send status
-                    status_msg = cv_structs.create_status(frame_number, frame_number+100) # Create ctypes status
-                    
-                    self.communicator.send_ctypes_msg(status_msg) # Send status
+                    if self.send_status:
+                        status_msg = cv_structs.create_status(frame_number, frame_number+100) # Create ctypes status
+                        self.communicator.send_ctypes_msg(status_msg) # Send status
                     
                     # Read receive queue
                     while not self.new_messages_queue.empty():
@@ -332,7 +333,7 @@ if __name__ == "__main__":
     #receive_channel = ("192.168.132.212", 5100)
     #send_channel = ("192.168.132.60", 5101)
 
-    receive_cmds_channel = ("127.0.0.1", 5111)
+    receive_cmds_channel = ("127.0.0.1", 5100)
     send_reports_channel = ("127.0.0.1", 5111)
     
     # Start grabber

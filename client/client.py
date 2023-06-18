@@ -14,23 +14,18 @@ class Client():
         def handle_msg(msg):
             print(f"Got {msg}")
 
-        receive_reports_channel = ("127.0.0.1", 5101)
-        send_cmds_channel = ("127.0.0.1", 5111)
+        receive_reports_channel = ("127.0.0.1", 5111)
+        send_cmds_channel = ("127.0.0.1", 5100)
 
         self.communicator = Communicator(logger, receive_reports_channel, send_cmds_channel, handle_msg)
         self.communicator.start_receiver_thread() # Start receiver loop
 
     def init_gui(self):
-        def print_text():
-            fps_1 = self.fps_1_textbox.get("1.0", "end-1c")
-            fps_2 = self.fps_2_textbox.get("1.0", "end-1c")
-            print(f"New FPS: {fps_1}, {fps_2}")
-
         # Create the main window
         window = tk.Tk()
 
         # Create the button
-        fps_button = tk.Button(window, text="Change FPS", command=print_text)
+        fps_button = tk.Button(window, text="Change FPS", command=self.change_fps)
         fps_button.grid(row=0, column=0)
 
         # Create the textbox
@@ -43,8 +38,8 @@ class Client():
         window.mainloop()
     
     def change_fps(self):
-        fps_1 = self.fps_1_textbox.get("1.0", "end-1c")
-        fps_2 = self.fps_2_textbox.get("1.0", "end-1c")
+        fps_1 = int(self.fps_1_textbox.get("1.0", "end-1c"))
+        fps_2 = int(self.fps_2_textbox.get("1.0", "end-1c"))
         print(f"New FPS: {fps_1}, {fps_2}")
         cv_command = cv_structs.create_cv_command(fps_1, fps_2, bitrateKBs_1=1000, bitrateKBs_2=1000, active_sensor=1)
         self.communicator.send_ctypes_msg(cv_command)
