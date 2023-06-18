@@ -87,11 +87,11 @@ class Communicator():
 
         # Get msg_type
         if header_opcode == cu_mrg.cu_mrg_Opcodes.OPCvStatusMessage:
-            msg_type = cu_mrg.CvStatusMessage
+            msg_type = cv_structs.vision_status_msg
         elif header_opcode == cu_mrg.cu_mrg_Opcodes.OPSetCvParamsCmdMessage:
-            msg_type = cu_mrg.SetCvParamsCmdMessage
+            msg_type = cv_structs.client_set_params_msg
         elif header_opcode == cu_mrg.cu_mrg_Opcodes.OPSetCvParamsAckMessage:
-            msg_type = cu_mrg.SetCvParamsAckMessage
+            msg_type = cv_structs.vision_set_params_ack_msg
         else:
             self.logger.error(f"opCode {header_opcode} unknown")
             return None
@@ -124,7 +124,7 @@ if __name__ == "__main__":
     logger.info("Welcome to MessageHandler")
 
     def handle_ctypes_msg_callback(msg):
-        print(f"Got {msg}")
+        logger.info(f"Got {msg}")
 
     receive_channel = ("127.0.0.1", 5101)
     send_channel = ("127.0.0.1", 5101)
@@ -135,7 +135,7 @@ if __name__ == "__main__":
     # Simulate sending
     def simulate_status_loop():
         for frame_number in range(2):
-            status_msg = cv_structs.create_status(frame_number, frame_number+100)
+            status_msg = cv_structs.create_status(20, 25, frame_number, frame_number+100)
             communicator.send_ctypes_msg(status_msg)
             time.sleep(2.5)
             

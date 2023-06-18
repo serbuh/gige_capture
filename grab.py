@@ -54,6 +54,7 @@ class Grabber():
         # Init FPS variables
         self.frame_count_tot = 0
         self.frame_count_fps = 0
+        self.last_fps = 0
         self.start_time = time.time()
 
         # Init grabber
@@ -216,8 +217,8 @@ class Grabber():
                 now = time.time()
                 elapsed_time = now-self.start_time
                 if elapsed_time >= 3.0:
-                    fps= self.frame_count_fps / elapsed_time
-                    self.logger.info(f"FPS: {fps}")
+                    self.last_fps = self.frame_count_fps / elapsed_time
+                    self.logger.info(f"FPS: {self.last_fps}")
                     # Reset FPS counter
                     self.start_time = now
                     self.frame_count_fps = 0
@@ -234,7 +235,7 @@ class Grabber():
                 if self.enable_messages_interface:
                     # Send status
                     if self.send_status:
-                        status_msg = cv_structs.create_status(frame_number, frame_number+100) # Create ctypes status
+                        status_msg = cv_structs.create_status(int(self.last_fps), int(self.last_fps), frame_number, frame_number) # Create ctypes status
                         self.communicator.send_ctypes_msg(status_msg) # Send status
                     
                     # Read receive queue
@@ -252,8 +253,7 @@ class Grabber():
                 self.logger.info(f'Exception on frame {self.frame_count_tot}')
     
     def handle_command(self, item):
-        print(f"Handle {item}")
-        # TODO apply command
+        self.logger.info(f">> Handle {item}") # Server
 
     def change_fps(self, new_fps):
         self.logger.info(f"TODO: Change fps to {new_fps}")
@@ -293,16 +293,22 @@ class Grabber():
         self.logger.info("My work here is done")
 
     def handle_ctypes_msg_callback(self, msg):
+        self.logger.info(f">> Got {msg}") # Server
         if msg is None:
             self.logger.error("Invalid message. Ignoring")
             return
 
-        elif type(msg) == cu_mrg.SetCvParamsCmdMessage:
+        elif type(msg) == cv_structs.client_set_params_msg:
+            
+            # TODO do things
             
             # Create ack
             params_result_msg = cv_structs.create_cv_command_ack(isOk=True)
             # Send Ack
             self.communicator.send_ctypes_msg(params_result_msg)
+        
+        elif type(msg) == cv_structs.vision_status_msg:
+            self.logger.warning(f"got vision status from ourselves?")
         
         else:
             self.logger.warning(f"Trying to handle unknown msg type {type(msg)}")

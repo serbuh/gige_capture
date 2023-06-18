@@ -12,7 +12,7 @@ class Client():
         self.logger = logger
 
         def handle_msg(msg):
-            print(f"Got {msg}")
+            self.logger.info(f">> Got {msg}") # Client
 
         receive_reports_channel = ("127.0.0.1", 5111)
         send_cmds_channel = ("127.0.0.1", 5100)
@@ -40,7 +40,7 @@ class Client():
     def change_fps(self):
         fps_1 = int(self.fps_1_textbox.get("1.0", "end-1c"))
         fps_2 = int(self.fps_2_textbox.get("1.0", "end-1c"))
-        print(f"New FPS: {fps_1}, {fps_2}")
+        self.logger.info(f"Set new FPS: {fps_1}, {fps_2}")
         cv_command = cv_structs.create_cv_command(fps_1, fps_2, bitrateKBs_1=1000, bitrateKBs_2=1000, active_sensor=1)
         self.communicator.send_ctypes_msg(cv_command)
 
