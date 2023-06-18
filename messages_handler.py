@@ -10,12 +10,12 @@ from communication.udp_communicator import Communicator
 from ICD import cv_structs
 
 class MessagesHandler():
-    def __init__(self, logger, print_received=False):
+    def __init__(self, logger, receive_channel, send_channel, print_received=False):
         self.print_received = print_received
         self.logger = logger
         self.logger.info("Init Messages Handler")
         
-        self.communicator = Communicator(self.logger, self.parse_command, self.print_received)
+        self.communicator = Communicator(self.logger, receive_channel, send_channel, self.parse_command, self.print_received)
 
     def start_receive(self):
         '''
@@ -88,7 +88,10 @@ if __name__ == "__main__":
     logger.addHandler(ch)
     logger.info("Welcome to MessageHandler")
 
-    messages_handler = MessagesHandler(logger, print_received=True)
+    receive_channel = ("127.0.0.1", 5101)
+    send_channel = ("127.0.0.1", 5101)
+
+    messages_handler = MessagesHandler(logger, receive_channel, send_channel, print_received=True)
     messages_handler.start_receive()
     
     # Simulate sending

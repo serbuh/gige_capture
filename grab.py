@@ -36,7 +36,7 @@ Aravis.enable_interface("Fake")
 
 
 class Grabber():
-    def __init__(self, logger, save_frames, recordings_basedir, enable_gst, gst_destination, send_not_show, show_frames_cv2, artificial_frames, enable_messages_interface):
+    def __init__(self, logger, receive_cmds_channel, send_reports_channel, save_frames, recordings_basedir, enable_gst, gst_destination, send_not_show, show_frames_cv2, artificial_frames, enable_messages_interface):
         self.logger = logger
         self.save_frames = save_frames
         self.recordings_basedir = recordings_basedir
@@ -78,7 +78,7 @@ class Grabber():
             self.gst_sender = None
         
         if self.enable_messages_interface:
-            self.messages_handler = MessagesHandler(self.logger, print_received=True)
+            self.messages_handler = MessagesHandler(self.logger, receive_cmds_channel, send_reports_channel, print_received=True)
             self.new_messages_queue = queue.Queue()
             self.messages_handler.set_receive_queue(self.new_messages_queue)
             self.messages_handler.register_callback("change_fps", self.change_fps)
@@ -297,7 +297,13 @@ if __name__ == "__main__":
     #gst_destination = ("127.0.0.1", 5000)
     gst_destination = ("192.168.132.60", 1212)
 
+    #receive_channel = ("192.168.132.212", 5100)
+    #send_channel = ("192.168.132.60", 5101)
+
+    receive_cmds_channel = ("127.0.0.1", 5101)
+    send_reports_channel = ("127.0.0.1", 5101)
+    
     # Start grabber
-    grabber = Grabber(logger=logger, save_frames=False, recordings_basedir=recordings_basedir, enable_gst=True, gst_destination=gst_destination, send_not_show=True, show_frames_cv2=True, artificial_frames=False, enable_messages_interface=True)
+    grabber = Grabber(logger, receive_cmds_channel, send_reports_channel, save_frames=False, recordings_basedir=recordings_basedir, enable_gst=True, gst_destination=gst_destination, send_not_show=True, show_frames_cv2=True, artificial_frames=False, enable_messages_interface=True)
     grabber.frames_loop()
     logger.info("Bye!")

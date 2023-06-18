@@ -9,25 +9,35 @@ from communication.udp import UDP
 from ICD import cv_structs
 
 class Communicator():
-    def __init__(self, logger, parse_msg_callback, print_received=False):
+    def __init__(self, logger, receive_channel, send_channel, parse_msg_callback, print_received=False):
         self.logger = logger
         self.parse_msg_callback = parse_msg_callback
         self.print_received = print_received
         self.logger.info("Init Communicator")
 
-        # receive_channel_ip = "192.168.132.212"
-        # receive_channel_port = 5100
-        # send_channel_ip = "192.168.132.60"
-        # send_channel_port = 5101
-        receive_channel_ip = "127.0.0.1"
-        receive_channel_port = 5101
-        send_channel_ip = "127.0.0.1"
-        send_channel_port = 5101
-        self.UDP_conn = UDP(receive_channel=(receive_channel_ip, receive_channel_port), send_channel=(send_channel_ip, send_channel_port)) # UDP connection object
+        # Check receive channel validity
+        if self.__is_valid_channel__(receive_channel):
+            self.logger.info(f"Open receive channel: {receive_channel}")
+        else:
+            raise Exception(f"Invalid receive channel definition: {receive_channel}")
+        
+        # Check send channel validity
+        if self.__is_valid_channel__(send_channel):
+            self.logger.info(f"Open send channel: {send_channel}")
+        else:
+            raise Exception(f"Invalid send channel definition: {send_channel}")
+
+        
+        
+        # Init udp sockets
+        self.UDP_conn = UDP(receive_channel, send_channel)
 
         self.keep_receiving = True
         self.received_msg_queue = None
         self.receive_thread = None
+
+    def __is_valid_channel__(self, channel):
+        return isinstance(channel, tuple) and len(channel) == 2 and isinstance(channel[0], str) and isinstance(channel[1], int)
 
     def start_receiver_thread(self):
         self.receive_thread = threading.Thread(target=self.receive_loop)
@@ -98,7 +108,10 @@ if __name__ == "__main__":
     def parse_msg_callback(item):
         print(f"Got {item}")
 
-    communicator = Communicator(logger, parse_msg_callback, print_received=True)
+    receive_channel = ("127.0.0.1", 5101)
+    send_channel = ("127.0.0.1", 5101)
+
+    communicator = Communicator(logger, receive_channel, send_channel, parse_msg_callback, print_received=True)
     communicator.start_receiver_thread() # Start receiver loop
     
     # Simulate sending
