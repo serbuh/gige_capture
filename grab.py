@@ -78,11 +78,11 @@ class Grabber():
             self.gst_sender = None
         
         if self.enable_messages_interface:
-            self.messages_handler = MessagesHandler(self.logger)
-            self.messages_handler.start_receiver_thread()
+            self.messages_handler = MessagesHandler(self.logger, print_received=True)
             self.new_messages_queue = queue.Queue()
             self.messages_handler.set_receive_queue(self.new_messages_queue)
             self.messages_handler.register_callback("change_fps", self.change_fps)
+            self.messages_handler.start_receive()
     
     def init_artificial_grabber(self, fps):
         self.frame_generator = FrameGenerator(640, 480, fps)
@@ -249,7 +249,7 @@ class Grabber():
         
         self.logger.info("Stop the messages receiver thread")
         try:
-            self.messages_handler.stop_receiver_thread()
+            self.messages_handler.destroy_communication()
         except:
             import traceback; traceback.print_exc()
             self.logger.info("Exception during stopping the receiver thread")
