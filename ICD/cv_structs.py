@@ -2,11 +2,20 @@ from ICD import cu_mrg
 
 class vision_status_msg(cu_mrg.CvStatusMessage):
     def __str__(self):
-        return f"{self.cvStatus.camera1Status.frameId}"
+        cam_info= lambda cam : f"Frame {cam.frameId} @ {cam.fps} [Hz] bitrate {cam.bitrateKBs} offset({cam.cameraOffsetX}, {cam.cameraOffsetY})"
+        cam_1_str = cam_info(self.cvStatus.camera1Status)
+        cam_2_str = cam_info(self.cvStatus.camera2Status)
+        if self.cvStatus.selectedCameraSensors.value == cu_mrg.activateCameraSensors.camera1:
+            active_cam = "1"
+        elif self.cvStatus.selectedCameraSensors.value == cu_mrg.activateCameraSensors.camera2:
+            active_cam = "2"
+        elif self.cvStatus.selectedCameraSensors.value == cu_mrg.activateCameraSensors.camera1And2:
+            active_cam = "1 and 2"
+        return f"{cam_1_str}\n{cam_2_str}\nActive Cam: {active_cam}"
 
 class client_set_params_msg(cu_mrg.SetCvParamsCmdMessage):
     def __str__(self):
-        cam_info= lambda cam : f"Frame {cam.frameId} @ {cam.fps} [Hz] bitrate {cam.bitrateKBs} offset({cam.cameraOffsetX}, {cam.cameraOffsetX})"
+        cam_info= lambda cam : f"Frame {cam.frameId} @ {cam.fps} [Hz] bitrate {cam.bitrateKBs} offset({cam.cameraOffsetX}, {cam.cameraOffsetY})"
         cam_1_str = cam_info(self.cvParams.camera1Control)
         cam_2_str = cam_info(self.cvParams.camera2Control)
         if self.cvParams.selectedCameraSensors.value == cu_mrg.activateCameraSensors.camera1:

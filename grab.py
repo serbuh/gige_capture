@@ -49,7 +49,7 @@ class Grabber():
         self.show_frames_cv2 = show_frames_cv2
         self.artificial_frames = artificial_frames
         self.enable_messages_interface = enable_messages_interface
-        self.send_status = False
+        self.send_status = True
         
         # Init FPS variables
         self.frame_count_tot = 0
