@@ -5,6 +5,45 @@ import threading
 from ICD import cv_structs
 from communication.udp_communicator import Communicator
 
+import tkinter as tk
+
+class Client():
+    def __init__(self, logger):
+        self.logger = logger
+
+        def parse_msg_callback(item):
+            print(f"Got {item}")
+
+        receive_reports_channel = ("127.0.0.1", 5101)
+        send_cmds_channel = ("127.0.0.1", 5100)
+
+        self.communicator = Communicator(logger, receive_reports_channel, send_cmds_channel, parse_msg_callback, print_received= True)
+        self.communicator.start_receiver_thread() # Start receiver loop
+
+    def init_gui(self):
+        def print_text():
+            text = fps_textbox.get("1.0", "end-1c")
+            print(text)
+
+        # Create the main window
+        window = tk.Tk()
+
+        # Create the button
+        fps_button = tk.Button(window, text="Change FPS", command=print_text)
+        fps_button.grid(row=0, column=0)
+
+        # Create the textbox
+        fps_textbox = tk.Text(window, height=1)
+        fps_textbox.grid(row=0, column=1)
+
+        window.mainloop()
+
+    # Simulate sending
+    def send_status(self):
+        status_msg = cv_structs.create_reply(True)
+        self.communicator.send_ctypes_msg(status_msg)
+
+
 if __name__=='__main__':
     
     # Set logger
@@ -17,21 +56,8 @@ if __name__=='__main__':
     logger.addHandler(ch)
     logger.info("Welcome to Client Simulator")
     
-    receive_reports_channel = ("127.0.0.1", 5101)
-    send_cmds_channel = ("127.0.0.1", 5100)
-
-    def parse_msg_callback(item):
-        print(f"Got {item}")
-
-    communicator = Communicator(logger, receive_reports_channel, send_cmds_channel, parse_msg_callback, print_received= True)
-    communicator.start_receiver_thread() # Start receiver loop
-
-    # Simulate sending
-    def simulate_status_loop():
-        for frame_number in range(2):
-            status_msg = cv_structs.create_status(frame_number, frame_number+100)
-            communicator.send_ctypes_msg(status_msg)
-            time.sleep(2.5)
-
-    send_thread = threading.Thread(target=simulate_status_loop)
-    send_thread.start()
+    
+    client = Client(logger)
+    client.init_gui()
+    
+    logger.info("Bye")

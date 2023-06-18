@@ -15,6 +15,10 @@ Install requirements
 pip install -r requirements.txt
 ```
 
+```sh
+sudo apt-get install python3-tk
+```
+
 Run grabber
 ```sh
 python grab.py
