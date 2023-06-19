@@ -24,7 +24,9 @@ class Client():
         # Create the main window
         window = tk.Tk()
 
-        self.fps_1_textbox, self.fps_2_textbox, self.bitrate_1_textbox, self.bitrate_2_textbox= \
+        self.fps_1_stringvar, self.fps_2_stringvar, \
+        self.bitrate_1_stringvar, self.bitrate_2_stringvar, \
+        self.active_cam_1_intvar, self.active_cam_2_intvar = \
             self.create_command_frame(window, frame_row=0, frame_column=0)
 
         window.mainloop()
@@ -35,41 +37,68 @@ class Client():
         command_frame.grid(row=frame_row, column=frame_column)
 
         # Create the button
-        command_button = tk.Button(command_frame, text="Send command", command=self.change_fps)
+        command_button = tk.Button(command_frame, text="Send command", command=self.change_cam_params)
         command_button.grid(row=0, column=0)
 
         # Row labels
         row_1_label = tk.Label(command_frame, text="Cam 1:")
         row_1_label.grid(row=1, column=0)
         row_1_label = tk.Label(command_frame, text="Cam 2:")
-        row_1_label.grid(row=3, column=0)
+        row_1_label.grid(row=2, column=0)
 
         # FPS
         fps_label = tk.Label(command_frame, text="FPS")
         fps_label.grid(row=0, column=1)
-        fps_1_textbox = tk.Text(command_frame, height=1, width=10)
+        fps_1_stringvar = tk.StringVar()
+        fps_1_textbox = tk.Entry(command_frame, width=10, textvariable=fps_1_stringvar)
         fps_1_textbox.grid(row=1, column=1)
-        fps_2_textbox = tk.Text(command_frame, height=1, width=10)
-        fps_2_textbox.grid(row=3, column=1)
+        fps_2_stringvar = tk.StringVar()
+        fps_2_textbox = tk.Entry(command_frame, width=10, textvariable=fps_2_stringvar)
+        fps_2_textbox.grid(row=2, column=1)
         
         # Bitrate
         bitrate_label = tk.Label(command_frame, text="Bitrate [KBs]")
         bitrate_label.grid(row=0, column=2)
-        bitrate_1_textbox = tk.Text(command_frame, height=1, width=10)
+        bitrate_1_stringvar = tk.StringVar()
+        bitrate_1_textbox = tk.Entry(command_frame, width=10, textvariable=bitrate_1_stringvar)
         bitrate_1_textbox.grid(row=1, column=2)
-        bitrate_2_textbox = tk.Text(command_frame, height=1, width=10)
-        bitrate_2_textbox.grid(row=3, column=2)
+        bitrate_2_stringvar = tk.StringVar()
+        bitrate_2_textbox = tk.Entry(command_frame, width=10, textvariable=bitrate_2_stringvar)
+        bitrate_2_textbox.grid(row=2, column=2)
+        
 
-        return fps_1_textbox, fps_2_textbox, bitrate_1_textbox, bitrate_2_textbox
+        # Active cam
+        active_cam_label = tk.Label(command_frame, text="Active")
+        active_cam_label.grid(row=0, column=3)
+        active_cam_1_intvar = tk.IntVar()
+        active_cam_1_checkbutton = tk.Checkbutton(command_frame, variable=active_cam_1_intvar, onvalue=1, offvalue=0)
+        active_cam_1_checkbutton.grid(row=1, column=3)
+        active_cam_2_intvar = tk.IntVar()
+        active_cam_2_checkbutton = tk.Checkbutton(command_frame, variable=active_cam_2_intvar, onvalue=1, offvalue=0)
+        active_cam_2_checkbutton.grid(row=2, column=3)
+
+        return fps_1_stringvar, fps_2_stringvar, bitrate_1_stringvar, bitrate_2_stringvar, active_cam_1_intvar, active_cam_2_intvar
 
     
-    def change_fps(self):
-        fps_1 = int(self.fps_1_textbox.get("1.0", "end-1c"))
-        fps_2 = int(self.fps_2_textbox.get("1.0", "end-1c"))
-        bitrate_1 = int(self.bitrate_1_textbox.get("1.0", "end-1c"))
-        bitrate_2 = int(self.bitrate_2_textbox.get("1.0", "end-1c"))
-        self.logger.info(f"Set new params:\nCam 1 FPS {fps_1} bitrate {bitrate_1}\nCam 2 FPS {fps_2} bitrate {bitrate_2}")
-        cv_command = cv_structs.create_cv_command(fps_1, fps_2, bitrateKBs_1=bitrate_1, bitrateKBs_2=bitrate_2, active_sensor=1)
+    def change_cam_params(self):
+        fps_1 = int(self.fps_1_stringvar.get())
+        fps_2 = int(self.fps_2_stringvar.get())
+        bitrate_1 = int(self.bitrate_1_stringvar.get())
+        bitrate_2 = int(self.bitrate_2_stringvar.get())
+        active_1 = self.active_cam_1_intvar.get()
+        active_2 = self.active_cam_2_intvar.get()
+        active_1_str = "(Active)" if active_1 else "(Inactive)"
+        active_2_str = "(Active)" if active_2 else "(Inactive)"
+        self.logger.info(f"Set new params:\nCam 1 FPS {fps_1} bitrate {bitrate_1} {active_1_str}\nCam 2 FPS {fps_2} bitrate {bitrate_2} {active_2_str}")
+        if active_1 and active_2:
+            active_cam = 0
+        elif active_1:
+            active_cam = 1 # Only 1
+        elif active_2:
+            active_cam = 2 # Only 2
+        else:
+            active_cam = 1 # By default the one is active
+        cv_command = cv_structs.create_cv_command(fps_1, fps_2, bitrateKBs_1=bitrate_1, bitrateKBs_2=bitrate_2, active_sensor=active_cam)
         self.communicator.send_ctypes_msg(cv_command)
 
 
