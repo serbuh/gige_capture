@@ -32,7 +32,6 @@ from gst_handler import GstSender
 from frame_generator import FrameGenerator
 from ICD import cv_structs
 from communication.udp_communicator import Communicator
-from ICD import cu_mrg
 from ICD import cv_structs
 
 Aravis.enable_interface("Fake")

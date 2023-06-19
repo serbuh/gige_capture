@@ -50,9 +50,11 @@ class Client():
         fps_label = tk.Label(command_frame, text="FPS")
         fps_label.grid(row=0, column=1)
         fps_1_stringvar = tk.StringVar()
+        fps_1_stringvar.set("25")
         fps_1_textbox = tk.Entry(command_frame, width=10, textvariable=fps_1_stringvar)
         fps_1_textbox.grid(row=1, column=1)
         fps_2_stringvar = tk.StringVar()
+        fps_2_stringvar.set("25")
         fps_2_textbox = tk.Entry(command_frame, width=10, textvariable=fps_2_stringvar)
         fps_2_textbox.grid(row=2, column=1)
         
@@ -60,20 +62,23 @@ class Client():
         bitrate_label = tk.Label(command_frame, text="Bitrate [KBs]")
         bitrate_label.grid(row=0, column=2)
         bitrate_1_stringvar = tk.StringVar()
+        bitrate_1_stringvar.set("10")
         bitrate_1_textbox = tk.Entry(command_frame, width=10, textvariable=bitrate_1_stringvar)
         bitrate_1_textbox.grid(row=1, column=2)
         bitrate_2_stringvar = tk.StringVar()
+        bitrate_2_stringvar.set("10")
         bitrate_2_textbox = tk.Entry(command_frame, width=10, textvariable=bitrate_2_stringvar)
         bitrate_2_textbox.grid(row=2, column=2)
         
-
         # Active cam
         active_cam_label = tk.Label(command_frame, text="Active")
         active_cam_label.grid(row=0, column=3)
         active_cam_1_intvar = tk.IntVar()
+        active_cam_1_intvar.set(1)
         active_cam_1_checkbutton = tk.Checkbutton(command_frame, variable=active_cam_1_intvar, onvalue=1, offvalue=0)
         active_cam_1_checkbutton.grid(row=1, column=3)
         active_cam_2_intvar = tk.IntVar()
+        active_cam_2_intvar.set(0)
         active_cam_2_checkbutton = tk.Checkbutton(command_frame, variable=active_cam_2_intvar, onvalue=1, offvalue=0)
         active_cam_2_checkbutton.grid(row=2, column=3)
 
