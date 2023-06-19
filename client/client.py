@@ -24,24 +24,52 @@ class Client():
         # Create the main window
         window = tk.Tk()
 
-        # Create the button
-        fps_button = tk.Button(window, text="Change FPS", command=self.change_fps)
-        fps_button.grid(row=0, column=0)
-
-        # Create the textbox
-        self.fps_1_textbox = tk.Text(window, height=1, width=10)
-        self.fps_1_textbox.grid(row=0, column=1)
-
-        self.fps_2_textbox = tk.Text(window, height=1, width=10)
-        self.fps_2_textbox.grid(row=0, column=2)
+        self.fps_1_textbox, self.fps_2_textbox, self.bitrate_1_textbox, self.bitrate_2_textbox= \
+            self.create_command_frame(window, frame_row=0, frame_column=0)
 
         window.mainloop()
+
+    def create_command_frame(self, window, frame_row, frame_column):
+        # Create a frame
+        command_frame = tk.Frame(window)
+        command_frame.grid(row=frame_row, column=frame_column)
+
+        # Create the button
+        command_button = tk.Button(command_frame, text="Send command", command=self.change_fps)
+        command_button.grid(row=0, column=0)
+
+        # Row labels
+        row_1_label = tk.Label(command_frame, text="Cam 1:")
+        row_1_label.grid(row=1, column=0)
+        row_1_label = tk.Label(command_frame, text="Cam 2:")
+        row_1_label.grid(row=3, column=0)
+
+        # FPS
+        fps_label = tk.Label(command_frame, text="FPS")
+        fps_label.grid(row=0, column=1)
+        fps_1_textbox = tk.Text(command_frame, height=1, width=10)
+        fps_1_textbox.grid(row=1, column=1)
+        fps_2_textbox = tk.Text(command_frame, height=1, width=10)
+        fps_2_textbox.grid(row=3, column=1)
+        
+        # Bitrate
+        bitrate_label = tk.Label(command_frame, text="Bitrate [KBs]")
+        bitrate_label.grid(row=0, column=2)
+        bitrate_1_textbox = tk.Text(command_frame, height=1, width=10)
+        bitrate_1_textbox.grid(row=1, column=2)
+        bitrate_2_textbox = tk.Text(command_frame, height=1, width=10)
+        bitrate_2_textbox.grid(row=3, column=2)
+
+        return fps_1_textbox, fps_2_textbox, bitrate_1_textbox, bitrate_2_textbox
+
     
     def change_fps(self):
         fps_1 = int(self.fps_1_textbox.get("1.0", "end-1c"))
         fps_2 = int(self.fps_2_textbox.get("1.0", "end-1c"))
-        self.logger.info(f"Set new FPS: {fps_1}, {fps_2}")
-        cv_command = cv_structs.create_cv_command(fps_1, fps_2, bitrateKBs_1=1000, bitrateKBs_2=1000, active_sensor=1)
+        bitrate_1 = int(self.bitrate_1_textbox.get("1.0", "end-1c"))
+        bitrate_2 = int(self.bitrate_2_textbox.get("1.0", "end-1c"))
+        self.logger.info(f"Set new params:\nCam 1 FPS {fps_1} bitrate {bitrate_1}\nCam 2 FPS {fps_2} bitrate {bitrate_2}")
+        cv_command = cv_structs.create_cv_command(fps_1, fps_2, bitrateKBs_1=bitrate_1, bitrateKBs_2=bitrate_2, active_sensor=1)
         self.communicator.send_ctypes_msg(cv_command)
 
 
