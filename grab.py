@@ -32,7 +32,6 @@ from gst_handler import GstSender
 from frame_generator import FrameGenerator
 from ICD import cv_structs
 from communication.udp_communicator import Communicator
-from ICD import cv_structs
 
 Aravis.enable_interface("Fake")
 
@@ -110,15 +109,17 @@ class Grabber():
         
         cam_vendor = self.camera.get_vendor_name()
         cam_model = self.camera.get_model_name()
-        print (f"Camera vendor : {cam_vendor}")
-        print (f"Camera model  : {cam_model}")
+        self.logger.info(f"Camera vendor : {cam_vendor}")
+        self.logger.info(f"Camera model  : {cam_model}")
 
         if cam_model == "Blackfly BFLY-PGE-20E4C": # FLIR
+            self.logger.info("Loading settings for FLIR")
             x, y, w, h = 0, 0, 1280, 1024
             fps = 20.0
             self.pixel_format = Aravis.PIXEL_FORMAT_MONO_8
         
         elif cam_model == "mvBlueCOUGAR-X102eC": #BlueCOUGAR-X
+            self.logger.info("Loading settings for mvBlue")
             #x, y, w, h = 0, 0, 1280, 1024
             x, y, w, h = 320, 240, 640, 480
             fps = 20.0
@@ -126,8 +127,15 @@ class Grabber():
             #self.pixel_format = Aravis.PIXEL_FORMAT_RGB_8_PACKED
             #self.pixel_format = Aravis.PIXEL_FORMAT_YUV_422_PACKED
             #self.pixel_format = Aravis.PIXEL_FORMAT_YUV_422_YUYV_PACKED
-            
+        
+        elif cam_model == "PT1000-CL4":
+            self.logger.info("Loading settings for Pleora")
+            x, y, w, h = 0, 0, 640, 480
+            fps = 25.0
+            self.pixel_format = Aravis.PIXEL_FORMAT_MONO_8
+
         else: # Default
+            self.logger.warning("Unknown camera. Loading default settings. Feel lucky?")
             x, y, w, h = 0, 0, 640, 480
             fps = 10.0
             self.pixel_format = Aravis.PIXEL_FORMAT_MONO_8
@@ -138,8 +146,12 @@ class Grabber():
         except gi.repository.GLib.Error as e:
             self.logger.info(f"{e}\nCould not set camera params. Camera is already in use?")
             exit()
-        self.camera.set_frame_rate(fps)
-        self.camera.set_pixel_format(self.pixel_format)
+        try:
+            self.camera.set_frame_rate(fps)
+            self.camera.set_pixel_format(self.pixel_format)
+        except gi.repository.GLib.Error as e:
+            self.logger.info(f"{e}\nCould not set frame rate / pixel format params.")
+            exit()
 
         payload = self.camera.get_payload ()
         self.pixel_format_string = self.camera.get_pixel_format_as_string()
