@@ -3,8 +3,8 @@
     receive_cmds_port = 5100
     send_reports_ip = "127.0.0.1"
     send_reports_port = 5111
-    gst_destination_ip = "192.168.132.60"
-    gst_destination_port = 1212
+    gst_destination_ip = "192.168.132.60"   # "127.0.0.1"
+    gst_destination_port = 1212             # 5000
     
 [Grabber]
     save_frames = false

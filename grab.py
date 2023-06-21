@@ -76,18 +76,19 @@ class Configurator():
         self.artificial_frames = self.config['Grabber']['artificial_frames']
         self.enable_messages_interface = self.config['Grabber']['enable_messages_interface']
         self.send_status = self.config['Grabber']['send_status']
+
+        # Com
+        self.gst_destination = (str(self.config['Com']['gst_destination_ip']), int(self.config['Com']['gst_destination_port']))
         
 
 class Grabber():
-    def __init__(self, logger, proj_path, receive_cmds_channel, send_reports_channel, gst_destination):
+    def __init__(self, logger, proj_path, receive_cmds_channel, send_reports_channel):
         self.logger = logger
         
         self.config = Configurator(logger, proj_path)
         
         self.active_camera = self.config.active_camera
 
-        self.gst_destination = gst_destination
-        
         # Init FPS variables
         self.frame_count_tot = 0
         self.frame_count_fps = 0
@@ -115,7 +116,7 @@ class Grabber():
 
         # Send frames options
         if self.config.enable_gst:
-            self.gst_sender = GstSender(self.logger, self.gst_destination, self.fps, self.config.send_not_show, from_testvideo=False)
+            self.gst_sender = GstSender(self.logger, self.config.gst_destination, self.fps, self.config.send_not_show, from_testvideo=False)
         else:
             self.gst_sender = None
         
@@ -391,9 +392,6 @@ if __name__ == "__main__":
     logger.info("Welcome to Grabber")
 
     # Prepare params
-    #gst_destination = ("127.0.0.1", 5000)
-    gst_destination = ("192.168.132.60", 1212)
-
     #receive_channel = ("192.168.132.212", 5100)
     #send_channel = ("192.168.132.60", 5101)
 
@@ -403,6 +401,6 @@ if __name__ == "__main__":
     proj_path=pathlib.Path().resolve()
 
     # Start grabber
-    grabber = Grabber(logger, proj_path, receive_cmds_channel, send_reports_channel, gst_destination=gst_destination)
+    grabber = Grabber(logger, proj_path, receive_cmds_channel, send_reports_channel)
     grabber.frames_loop()
     logger.info("Bye!")
