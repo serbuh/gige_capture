@@ -39,9 +39,10 @@ from communication.udp_communicator import Communicator
 Aravis.enable_interface("Fake")
 
 class Configurator():
-    def __init__(self, logger, config_file_path):
+    def __init__(self, logger, proj_path):
         self.logger = logger
-        self.config_file_path = config_file_path
+        self.config_file_path = os.path.join(proj_path, "config", "config.toml")
+        self.file_dir=pathlib.Path().resolve()
         self.logger.info(f"Loading configuration from:\n{self.config_file_path}")
         with open(self.config_file_path, mode="rb") as config_f:
             try:
@@ -68,8 +69,7 @@ class Configurator():
 
         # Grabber
         self.save_frames = self.config['Grabber']['save_frames']
-        file_dir=pathlib.Path().resolve()
-        self.recordings_basedir = os.path.join(file_dir, self.config['Grabber']['recordings_dir'])
+        self.recordings_basedir = os.path.join(self.file_dir, self.config['Grabber']['recordings_dir'])
         self.enable_gst = self.config['Grabber']['enable_gst']
         self.send_not_show = self.config['Grabber']['send_not_show']
         self.show_frames_cv2 = self.config['Grabber']['show_frames_cv2']
@@ -79,20 +79,14 @@ class Configurator():
         
 
 class Grabber():
-    def __init__(self, logger, config_file_path, receive_cmds_channel, send_reports_channel, enable_gst, gst_destination, send_not_show, show_frames_cv2, artificial_frames, enable_messages_interface):
+    def __init__(self, logger, proj_path, receive_cmds_channel, send_reports_channel, gst_destination):
         self.logger = logger
         
-        self.config = Configurator(logger, config_file_path)
+        self.config = Configurator(logger, proj_path)
         
         self.active_camera = self.config.active_camera
 
-        self.enable_gst = enable_gst
         self.gst_destination = gst_destination
-        self.send_not_show = send_not_show
-        self.show_frames_cv2 = show_frames_cv2
-        self.artificial_frames = artificial_frames
-        self.enable_messages_interface = enable_messages_interface
-        self.send_status = True
         
         # Init FPS variables
         self.frame_count_tot = 0
@@ -101,14 +95,14 @@ class Grabber():
         self.start_time = time.time()
 
         # Init grabber
-        if self.artificial_frames:
+        if self.config.artificial_frames:
             self.fps = 20
             self.init_artificial_grabber(self.fps)
         else:
             self.fps = self.init_camera_grabber()
         
         # Show frames options
-        if self.show_frames_cv2:
+        if self.config.show_frames_cv2:
             self.window_name = "Frames"
             cv2.namedWindow(self.window_name, cv2.WINDOW_AUTOSIZE)
         
@@ -120,13 +114,13 @@ class Grabber():
             self.logger.info(f"Saving frames to:\n{self.recordings_full_path}")
 
         # Send frames options
-        if self.enable_gst:
-            self.gst_sender = GstSender(self.logger, self.gst_destination, self.fps, self.send_not_show, from_testvideo=False)
+        if self.config.enable_gst:
+            self.gst_sender = GstSender(self.logger, self.gst_destination, self.fps, self.config.send_not_show, from_testvideo=False)
         else:
             self.gst_sender = None
         
         # UDP ctypes messages interface
-        if self.enable_messages_interface:
+        if self.config.enable_messages_interface:
             self.communicator = Communicator(self.logger, receive_cmds_channel, send_reports_channel, self.handle_ctypes_msg_callback)
             self.new_messages_queue = queue.Queue()
             self.communicator.set_receive_queue(self.new_messages_queue)
@@ -252,7 +246,7 @@ class Grabber():
         frame_number = 0
         while True:
             try:
-                if self.artificial_frames:
+                if self.config.artificial_frames:
                     frame_np, cam_buffer = self.get_artificial_frames()
                 else:
                     frame_np, cam_buffer = self.get_frame_from_camera()
@@ -262,7 +256,7 @@ class Grabber():
                     continue
 
                 # Show frame
-                if self.show_frames_cv2 and frame_np is not None:
+                if self.config.show_frames_cv2 and frame_np is not None:
                     cv2.imshow(self.window_name, frame_np)
 
                 if self.config.save_frames:
@@ -297,9 +291,9 @@ class Grabber():
                 frame_number+=1
 
                 # Receive commands / Send reports
-                if self.enable_messages_interface:
+                if self.config.enable_messages_interface:
                     # Send status
-                    if self.send_status:
+                    if self.config.send_status:
                         status_msg = cv_structs.create_status(frame_number, frame_number, int(self.last_fps), int(self.last_fps), bitrateKBs_1=10, bitrateKBs_2=10, active_camera=self.active_camera) # Create ctypes status
                         self.communicator.send_ctypes_msg(status_msg) # Send status
                     
@@ -406,10 +400,9 @@ if __name__ == "__main__":
     receive_cmds_channel = ("127.0.0.1", 5100)
     send_reports_channel = ("127.0.0.1", 5111)
     
-    file_dir=pathlib.Path().resolve()
-    config_file_path = os.path.join(file_dir, "config", "config.toml")
+    proj_path=pathlib.Path().resolve()
 
     # Start grabber
-    grabber = Grabber(logger, config_file_path, receive_cmds_channel, send_reports_channel, enable_gst=True, gst_destination=gst_destination, send_not_show=True, show_frames_cv2=True, artificial_frames=False, enable_messages_interface=True)
+    grabber = Grabber(logger, proj_path, receive_cmds_channel, send_reports_channel, gst_destination=gst_destination)
     grabber.frames_loop()
     logger.info("Bye!")
