@@ -78,11 +78,13 @@ class Configurator():
         self.send_status = self.config['Grabber']['send_status']
 
         # Com
-        self.gst_destination = (str(self.config['Com']['gst_destination_ip']), int(self.config['Com']['gst_destination_port']))
+        self.gst_destination      = (str(self.config['Com']['gst_destination_ip']), int(self.config['Com']['gst_destination_port']))
+        self.receive_cmds_channel = (str(self.config['Com']['receive_cmds_ip']), int(self.config['Com']['receive_cmds_port']))
+        self.send_reports_channel = (str(self.config['Com']['send_reports_ip']), int(self.config['Com']['send_reports_port']))
         
 
 class Grabber():
-    def __init__(self, logger, proj_path, receive_cmds_channel, send_reports_channel):
+    def __init__(self, logger, proj_path):
         self.logger = logger
         
         self.config = Configurator(logger, proj_path)
@@ -122,7 +124,7 @@ class Grabber():
         
         # UDP ctypes messages interface
         if self.config.enable_messages_interface:
-            self.communicator = Communicator(self.logger, receive_cmds_channel, send_reports_channel, self.handle_ctypes_msg_callback)
+            self.communicator = Communicator(self.logger, self.config.receive_cmds_channel, self.config.send_reports_channel, self.handle_ctypes_msg_callback)
             self.new_messages_queue = queue.Queue()
             self.communicator.set_receive_queue(self.new_messages_queue)
             self.communicator.register_callback("change_fps", self.change_fps)
@@ -391,16 +393,10 @@ if __name__ == "__main__":
     logger.addHandler(ch)
     logger.info("Welcome to Grabber")
 
-    # Prepare params
-    #receive_channel = ("192.168.132.212", 5100)
-    #send_channel = ("192.168.132.60", 5101)
-
-    receive_cmds_channel = ("127.0.0.1", 5100)
-    send_reports_channel = ("127.0.0.1", 5111)
-    
+    # Project path
     proj_path=pathlib.Path().resolve()
 
     # Start grabber
-    grabber = Grabber(logger, proj_path, receive_cmds_channel, send_reports_channel)
+    grabber = Grabber(logger, proj_path)
     grabber.frames_loop()
     logger.info("Bye!")
