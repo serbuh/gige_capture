@@ -1,0 +1,42 @@
+[Com]
+    receive_cmds_ip = "127.0.0.1"
+    receive_cmds_port = 5100
+    send_reports_ip = "127.0.0.1"
+    send_reports_port = 5111
+    gst_destination_ip = "192.168.132.60"
+    gst_destination_port = 1212
+    
+[Grabber]
+    save_frames = false
+    recordings_basedir = "recordings"
+    enable_gst = true
+    send_not_show = true
+    show_frames_cv2 = true
+    artificial_frames = false
+    enable_messages_interface = true
+
+[Cams]
+    cam_1_model = "mvBlueCOUGAR-X102eC"
+    cam_2_model = "PT1000-CL4"
+
+[mvBlueCOUGAR-X102eC]
+    pixel_format = PIXEL_FORMAT_BAYER_GR_8
+    offset_x = 320
+    offset_y = 240
+    width    = 640
+    height   = 480
+    scale_x  = 1
+    scale_y  = 1
+    grab_fps = 20
+    send_fps = 20
+
+[PT1000-CL4]
+    pixel_format = PIXEL_FORMAT_MONO_8
+    offset_x = 320
+    offset_y = 240
+    width    = 640
+    height   = 480
+    scale_x  = 1
+    scale_y  = 1
+    grab_fps = None
+    send_fps = 25

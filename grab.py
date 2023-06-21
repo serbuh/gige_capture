@@ -147,7 +147,7 @@ class Grabber():
             self.logger.info(f"{e}\nCould not set camera params. Camera is already in use?")
             exit()
         try:
-            self.camera.set_frame_rate(fps)
+            #self.camera.set_frame_rate(fps)
             self.camera.set_pixel_format(self.pixel_format)
         except gi.repository.GLib.Error as e:
             self.logger.info(f"{e}\nCould not set frame rate / pixel format params.")
@@ -185,10 +185,15 @@ class Grabber():
 
             # Bayer2RGB
             frame_np = cv2.cvtColor(frame_raw, cv2.COLOR_BayerGR2RGB)
+        elif self.pixel_format == Aravis.PIXEL_FORMAT_MONO_8:
+            frame_raw = np.frombuffer(buf, dtype='uint8').reshape( (self.height, self.width) )
 
+            # Bayer2RGB
+            frame_np = cv2.cvtColor(frame_raw, cv2.COLOR_GRAY2RGB)
         else:
             self.logger.info(f"Convertion from {self.pixel_format_string} not supported")
             frame_np = None
+        
         
         return frame_np, cam_buffer
     
@@ -207,6 +212,10 @@ class Grabber():
                 else:
                     frame_np, cam_buffer = self.get_frame_from_camera()
                 
+                if frame_np is None:
+                    self.logger.warning("None frame")
+                    continue
+
                 # Show frame
                 if self.show_frames_cv2 and frame_np is not None:
                     cv2.imshow(self.window_name, frame_np)
