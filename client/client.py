@@ -96,13 +96,13 @@ class Client():
         active_2_str = "(Active)" if active_2 else "(Inactive)"
         self.logger.info(f"Set new params:\nCam 1 FPS {fps_1} bitrate {bitrate_1} {active_1_str}\nCam 2 FPS {fps_2} bitrate {bitrate_2} {active_2_str}")
         if active_1 and active_2:
-            active_cam = 0
+            active_cam = cv_structs.activateCameraSensors.camera1And2
         elif active_1:
-            active_cam = 1 # Only 1
+            active_cam = cv_structs.activateCameraSensors.camera1
         elif active_2:
-            active_cam = 2 # Only 2
+            active_cam = cv_structs.activateCameraSensors.camera2
         else:
-            active_cam = 1 # By default the one is active
+            active_cam = cv_structs.activateCameraSensors.camera1 # By default the one is active
         cv_command = cv_structs.create_cv_command(fps_1, fps_2, bitrateKBs_1=bitrate_1, bitrateKBs_2=bitrate_2, active_sensor=active_cam)
         self.communicator.send_ctypes_msg(cv_command)
 

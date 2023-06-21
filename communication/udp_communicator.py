@@ -137,7 +137,8 @@ if __name__ == "__main__":
     # Simulate sending
     def simulate_status_loop():
         for frame_number in range(2):
-            status_msg = cv_structs.create_status(frame_number, frame_number+100, fps_1=20, fps_2=25, bitrateKBs_1=10, bitrateKBs_2=10)
+            active_camera = cv_structs.activateCameraSensors.camera1
+            status_msg = cv_structs.create_status(frame_number, frame_number+100, fps_1=20, fps_2=25, bitrateKBs_1=10, bitrateKBs_2=10, active_camera=active_camera)
             communicator.send_ctypes_msg(status_msg)
             time.sleep(2.5)
             
