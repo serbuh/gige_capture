@@ -24,6 +24,9 @@ import logging
 import pathlib
 import datetime
 import queue
+import traceback
+import tomli
+import pprint
 
 gi.require_version('Aravis', '0.8')
 from gi.repository import Aravis
@@ -35,10 +38,37 @@ from communication.udp_communicator import Communicator
 
 Aravis.enable_interface("Fake")
 
+class Configurator():
+    def __init__(self, logger, config_file_path):
+        self.logger = logger
+        self.config_file_path = config_file_path
+        self.logger.info(f"Loading configuration from:\n{self.config_file_path}")
+        with open(self.config_file_path, mode="rb") as config_f:
+            try:
+                self.config = tomli.load(config_f)
+            except:
+                traceback.print_exc()
+                self.logger.error("Failed to read toml")
+                exit()
+        
+        # Cam 1
+        self.cam_1_model = self.config['Cams']['cam_1_model']
+        self.cam1 = self.config[self.cam_1_model]
+        self.logger.info(f"\nCamera 1  > {self.cam_1_model} <\n{pprint.pformat(self.cam1, indent=4, sort_dicts=False)}\n")
+                
+        # Cam 2
+        self.cam_2_model = self.config['Cams']['cam_2_model']
+        self.cam2 = self.config[self.cam_2_model]
+        self.logger.info(f"\nCamera 2  > {self.cam_2_model} <\n{pprint.pformat(self.cam2, indent=4, sort_dicts=False)}\n")
+        
+
 
 class Grabber():
-    def __init__(self, logger, receive_cmds_channel, send_reports_channel, save_frames, recordings_basedir, enable_gst, gst_destination, send_not_show, show_frames_cv2, artificial_frames, enable_messages_interface):
+    def __init__(self, logger, config_file_path, receive_cmds_channel, send_reports_channel, save_frames, recordings_basedir, enable_gst, gst_destination, send_not_show, show_frames_cv2, artificial_frames, enable_messages_interface):
         self.logger = logger
+        
+        self.config = Configurator(logger, config_file_path)
+        
         self.save_frames = save_frames
         self.recordings_basedir = recordings_basedir
         self.enable_gst = enable_gst
@@ -269,7 +299,7 @@ class Grabber():
                 break
             
             except Exception:
-                import traceback; traceback.print_exc()
+                traceback.print_exc()
                 self.logger.info(f'Exception on frame {self.frame_count_tot}')
     
     def handle_command(self, item):
@@ -285,14 +315,14 @@ class Grabber():
             if self.communicator is not None:
                 self.communicator.stop_receiver_thread()
         except:
-            import traceback; traceback.print_exc()
+            traceback.print_exc()
             self.logger.info("Exception during stopping the receiver thread")
 
         self.logger.info("Stop the camera grabbing")
         try:
             self.camera.stop_acquisition()
         except:
-            import traceback; traceback.print_exc()
+            traceback.print_exc()
             self.logger.info("Exception during closing camera grabbing")
         
         self.logger.info("Stop the gstreamer")
@@ -300,14 +330,14 @@ class Grabber():
             if self.gst_sender is not None:
                 self.gst_sender.destroy()
         except:
-            import traceback; traceback.print_exc()
+            traceback.print_exc()
             self.logger.info("Exception during closing gstreamer")
         
         self.logger.info("Close cv2 windows")
         try:
             cv2.destroyAllWindows()
         except:
-            import traceback; traceback.print_exc()
+            traceback.print_exc()
             self.logger.info("Exception during closing cv2 windows")
 
         self.logger.info("My work here is done")
@@ -362,8 +392,10 @@ if __name__ == "__main__":
 
     receive_cmds_channel = ("127.0.0.1", 5100)
     send_reports_channel = ("127.0.0.1", 5111)
-    
+
+    config_file_path = os.path.join(file_dir, "config", "config.toml")
+
     # Start grabber
-    grabber = Grabber(logger, receive_cmds_channel, send_reports_channel, save_frames=False, recordings_basedir=recordings_basedir, enable_gst=True, gst_destination=gst_destination, send_not_show=True, show_frames_cv2=True, artificial_frames=False, enable_messages_interface=True)
+    grabber = Grabber(logger, config_file_path, receive_cmds_channel, send_reports_channel, save_frames=False, recordings_basedir=recordings_basedir, enable_gst=True, gst_destination=gst_destination, send_not_show=True, show_frames_cv2=True, artificial_frames=False, enable_messages_interface=True)
     grabber.frames_loop()
     logger.info("Bye!")

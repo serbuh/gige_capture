@@ -2,4 +2,4 @@ numpy
 opencv-python
 pycairo
 PyGObject
-toml
+tomli

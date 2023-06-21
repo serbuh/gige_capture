@@ -20,7 +20,7 @@
     cam_2_model = "PT1000-CL4"
 
 [mvBlueCOUGAR-X102eC]
-    pixel_format = PIXEL_FORMAT_BAYER_GR_8
+    pixel_format = "PIXEL_FORMAT_BAYER_GR_8"
     offset_x = 320
     offset_y = 240
     width    = 640
@@ -31,12 +31,12 @@
     send_fps = 20
 
 [PT1000-CL4]
-    pixel_format = PIXEL_FORMAT_MONO_8
+    pixel_format = "PIXEL_FORMAT_MONO_8"
     offset_x = 320
     offset_y = 240
     width    = 640
     height   = 480
     scale_x  = 1
     scale_y  = 1
-    grab_fps = None
+    grab_fps = -1
     send_fps = 25
