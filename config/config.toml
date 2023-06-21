@@ -7,13 +7,14 @@
     gst_destination_port = 1212
     
 [Grabber]
-    save_frames = false
+    save_frames = true
     recordings_basedir = "recordings"
     enable_gst = true
     send_not_show = true
     show_frames_cv2 = true
     artificial_frames = false
     enable_messages_interface = true
+    send_status = true
 
 [Cams]
     cam_1_model = "mvBlueCOUGAR-X102eC"

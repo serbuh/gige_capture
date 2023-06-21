@@ -65,18 +65,26 @@ class Configurator():
         self.cam_2_model = self.config['Cams']['cam_2_model']
         self.cam2 = self.config[self.cam_2_model]
         self.logger.info(f"\nCamera 2  > {self.cam_2_model} <\n{pprint.pformat(self.cam2, indent=4, sort_dicts=False)}\n")
+
+        # Grabber
+        self.save_frames = self.config['Grabber']['save_frames']
+        self.recordings_basedir = self.config['Grabber']['recordings_basedir']
+        self.enable_gst = self.config['Grabber']['enable_gst']
+        self.send_not_show = self.config['Grabber']['send_not_show']
+        self.show_frames_cv2 = self.config['Grabber']['show_frames_cv2']
+        self.artificial_frames = self.config['Grabber']['artificial_frames']
+        self.enable_messages_interface = self.config['Grabber']['enable_messages_interface']
+        self.send_status = self.config['Grabber']['send_status']
         
 
-
 class Grabber():
-    def __init__(self, logger, config_file_path, receive_cmds_channel, send_reports_channel, save_frames, recordings_basedir, enable_gst, gst_destination, send_not_show, show_frames_cv2, artificial_frames, enable_messages_interface):
+    def __init__(self, logger, config_file_path, receive_cmds_channel, send_reports_channel, recordings_basedir, enable_gst, gst_destination, send_not_show, show_frames_cv2, artificial_frames, enable_messages_interface):
         self.logger = logger
         
         self.config = Configurator(logger, config_file_path)
         
         self.active_camera = self.config.active_camera
 
-        self.save_frames = save_frames
         self.recordings_basedir = recordings_basedir
         self.enable_gst = enable_gst
         self.gst_destination = gst_destination
@@ -105,7 +113,7 @@ class Grabber():
             cv2.namedWindow(self.window_name, cv2.WINDOW_AUTOSIZE)
         
         # Prepare save folder
-        if self.save_frames and self.recordings_basedir is not None:
+        if self.config.save_frames and self.recordings_basedir is not None:
             now = datetime.datetime.now().strftime("%y_%m_%d__%H_%M_%S")
             self.recordings_full_path = os.path.join(self.recordings_basedir, now)
             pathlib.Path(self.recordings_full_path).mkdir(parents=True, exist_ok=True) # Ensure dir existense
@@ -257,7 +265,7 @@ class Grabber():
                 if self.show_frames_cv2 and frame_np is not None:
                     cv2.imshow(self.window_name, frame_np)
 
-                if self.save_frames:
+                if self.config.save_frames:
                     cv2.imwrite(os.path.join(self.recordings_full_path, f"{frame_number}.tiff"), frame_np)
                     #self.logger.info(os.path.join(self.recordings_full_path, f"{frame_number}.tiff"))
                 
@@ -403,6 +411,6 @@ if __name__ == "__main__":
     config_file_path = os.path.join(file_dir, "config", "config.toml")
 
     # Start grabber
-    grabber = Grabber(logger, config_file_path, receive_cmds_channel, send_reports_channel, save_frames=False, recordings_basedir=recordings_basedir, enable_gst=True, gst_destination=gst_destination, send_not_show=True, show_frames_cv2=True, artificial_frames=False, enable_messages_interface=True)
+    grabber = Grabber(logger, config_file_path, receive_cmds_channel, send_reports_channel, recordings_basedir=recordings_basedir, enable_gst=True, gst_destination=gst_destination, send_not_show=True, show_frames_cv2=True, artificial_frames=False, enable_messages_interface=True)
     grabber.frames_loop()
     logger.info("Bye!")
