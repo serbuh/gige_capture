@@ -172,34 +172,16 @@ class Grabber():
         # self.config.cam1 = self.config.get_cam_settings(cam_model)
         self.config.cam2 = self.config.get_cam_settings(cam_model)
         
+        # Get cam params
         x = int(self.config.cam2['offset_x'])
         y = int(self.config.cam2['offset_y'])
         w = int(self.config.cam2['width'])
         h = int(self.config.cam2['height'])
+        pixel_format = self.config.cam2['pixel_format']
+        self.pixel_format = getattr(Aravis, pixel_format)
+        fps = self.config.cam2['send_fps'] # TODO add grab_fps
         
-        if cam_model == "Blackfly BFLY-PGE-20E4C": # FLIR
-            self.logger.info("Loading settings for FLIR")
-            fps = 20.0
-            self.pixel_format = Aravis.PIXEL_FORMAT_MONO_8
-        
-        elif cam_model == "mvBlueCOUGAR-X102eC": #BlueCOUGAR-X
-            self.logger.info("Loading settings for mvBlue")
-            fps = 20.0
-            self.pixel_format = Aravis.PIXEL_FORMAT_BAYER_GR_8
-            #self.pixel_format = Aravis.PIXEL_FORMAT_RGB_8_PACKED
-            #self.pixel_format = Aravis.PIXEL_FORMAT_YUV_422_PACKED
-            #self.pixel_format = Aravis.PIXEL_FORMAT_YUV_422_YUYV_PACKED
-        
-        elif cam_model == "PT1000-CL4":
-            self.logger.info("Loading settings for Pleora")
-            fps = 25.0
-            self.pixel_format = Aravis.PIXEL_FORMAT_MONO_8
-
-        else: # Default
-            self.logger.warning("Unknown camera. Loading default settings. Feel lucky?")
-            fps = 10.0
-            self.pixel_format = Aravis.PIXEL_FORMAT_MONO_8
-        
+            
         # Set camera params
         try:
             self.camera.set_region(x,y,w,h)
