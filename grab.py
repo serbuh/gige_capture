@@ -58,15 +58,13 @@ class Configurator():
             exit()
         
         # Cam 1
-        self.cam_1_model = self.config['Cams']['cam_1_model']
-        self.cam1 = self.config[self.cam_1_model]
-        self.logger.info(f"\nCamera 1  > {self.cam_1_model} <\n{pprint.pformat(self.cam1, indent=4, sort_dicts=False)}\n")
-                
-        # Cam 2
-        self.cam_2_model = self.config['Cams']['cam_2_model']
-        self.cam2 = self.config[self.cam_2_model]
-        self.logger.info(f"\nCamera 2  > {self.cam_2_model} <\n{pprint.pformat(self.cam2, indent=4, sort_dicts=False)}\n")
+        self.cam_1_ip = self.config['Cams']['cam_1_ip']
+        self.cam1 = None
 
+        # Cam 2
+        self.cam_2_ip = self.config['Cams']['cam_2_ip']
+        self.cam2 = None
+        
         # Grabber
         self.save_frames = self.config['Grabber']['save_frames']
         self.recordings_basedir = os.path.join(self.file_dir, self.config['Grabber']['recordings_dir'])
@@ -81,7 +79,15 @@ class Configurator():
         self.gst_destination      = (str(self.config['Com']['gst_destination_ip']), int(self.config['Com']['gst_destination_port']))
         self.receive_cmds_channel = (str(self.config['Com']['receive_cmds_ip']), int(self.config['Com']['receive_cmds_port']))
         self.send_reports_channel = (str(self.config['Com']['send_reports_ip']), int(self.config['Com']['send_reports_port']))
-        
+    
+    def get_cam_settings(self, cam_model):
+        cam_config = self.config.get(cam_model, None)
+        if cam_config is None:
+            self.logger.error(f"No config for {cam_model}")
+            exit()
+        else:
+            self.logger.info(f"\n> {cam_model} <\n{pprint.pformat(cam_config, indent=4, sort_dicts=False)}\n")
+        return cam_config
 
 class Grabber():
     def __init__(self, logger, proj_path):
@@ -136,34 +142,48 @@ class Grabber():
     def init_artificial_grabber(self, fps):
         self.frame_generator = FrameGenerator(640, 480, fps)
 
-    def init_camera_grabber(self):
+    def get_aravis_cam(self, cam_ip):
+        self.logger.info(f"Connecting to camera on IP {cam_ip}")
         try:
-            if len(sys.argv) > 1:
-                self.camera = Aravis.Camera.new (sys.argv[1])
-            else:
-                self.camera = Aravis.Camera.new (None)
+            camera = Aravis.Camera.new(None)
+            
         except TypeError:
-            self.logger.info("No camera found")
+            self.logger.info(f"No camera found ({cam_ip})")
             exit()
         except Exception as e:
-            self.logger.info(f"Some problem with camera: {e}")
+            self.logger.info(f"Some problem with camera ({cam_ip}): {e}")
             exit()
         
-        cam_vendor = self.camera.get_vendor_name()
-        cam_model = self.camera.get_model_name()
+        cam_vendor = camera.get_vendor_name()
         self.logger.info(f"Camera vendor : {cam_vendor}")
+        
+        cam_model = camera.get_model_name()
         self.logger.info(f"Camera model  : {cam_model}")
 
+        return camera, cam_model
+
+    def init_camera_grabber(self):
+        
+        self.camera, cam_model = self.get_aravis_cam(None)
+        
+        # self.camera_1 = self.get_aravis_cam(self.config.cam_1_ip) # near
+        # self.camera_2 = self.get_aravis_cam(self.config.cam_2_ip) # Voxi
+        
+        # self.config.cam1 = self.config.get_cam_settings(cam_model)
+        self.config.cam2 = self.config.get_cam_settings(cam_model)
+        
+        x = int(self.config.cam2['offset_x'])
+        y = int(self.config.cam2['offset_y'])
+        w = int(self.config.cam2['width'])
+        h = int(self.config.cam2['height'])
+        
         if cam_model == "Blackfly BFLY-PGE-20E4C": # FLIR
             self.logger.info("Loading settings for FLIR")
-            x, y, w, h = 0, 0, 1280, 1024
             fps = 20.0
             self.pixel_format = Aravis.PIXEL_FORMAT_MONO_8
         
         elif cam_model == "mvBlueCOUGAR-X102eC": #BlueCOUGAR-X
             self.logger.info("Loading settings for mvBlue")
-            #x, y, w, h = 0, 0, 1280, 1024
-            x, y, w, h = 320, 240, 640, 480
             fps = 20.0
             self.pixel_format = Aravis.PIXEL_FORMAT_BAYER_GR_8
             #self.pixel_format = Aravis.PIXEL_FORMAT_RGB_8_PACKED
@@ -172,13 +192,11 @@ class Grabber():
         
         elif cam_model == "PT1000-CL4":
             self.logger.info("Loading settings for Pleora")
-            x, y, w, h = 0, 0, 640, 480
             fps = 25.0
             self.pixel_format = Aravis.PIXEL_FORMAT_MONO_8
 
         else: # Default
             self.logger.warning("Unknown camera. Loading default settings. Feel lucky?")
-            x, y, w, h = 0, 0, 640, 480
             fps = 10.0
             self.pixel_format = Aravis.PIXEL_FORMAT_MONO_8
         

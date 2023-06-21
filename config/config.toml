@@ -17,22 +17,33 @@
     send_status = true
 
 [Cams]
-    cam_1_model = "mvBlueCOUGAR-X102eC"
-    cam_2_model = "PT1000-CL4"
+    cam_1_ip = "192.168.132.210" # Near IR
+    cam_2_ip = "192.168.132.211" # Bolo
     active_camera = "camera1"
 
-[mvBlueCOUGAR-X102eC]
-    pixel_format = "PIXEL_FORMAT_BAYER_GR_8"
-    offset_x = 320
-    offset_y = 240
-    width    = 640
-    height   = 480
+["mvBlueCOUGAR-X102eC"]
+    pixel_format = "PIXEL_FORMAT_BAYER_GR_8"  # PIXEL_FORMAT_RGB_8_PACKED # PIXEL_FORMAT_YUV_422_PACKED # PIXEL_FORMAT_YUV_422_YUYV_PACKED
+    offset_x = 320  # 0
+    offset_y = 240  # 0
+    width    = 640  # 1280
+    height   = 480  # 1024
     scale_x  = 1
     scale_y  = 1
     grab_fps = 20
     send_fps = 20
 
-[PT1000-CL4]
+["PT1000-CL4"]
+    pixel_format = "PIXEL_FORMAT_MONO_8"
+    offset_x = 0
+    offset_y = 0
+    width    = 640
+    height   = 480
+    scale_x  = 1
+    scale_y  = 1
+    grab_fps = nan
+    send_fps = 25
+
+["Blackfly BFLY-PGE-20E4C"]
     pixel_format = "PIXEL_FORMAT_MONO_8"
     offset_x = 320
     offset_y = 240
@@ -40,5 +51,5 @@
     height   = 480
     scale_x  = 1
     scale_y  = 1
-    grab_fps = -1
+    grab_fps = nan
     send_fps = 25
