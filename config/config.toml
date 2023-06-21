@@ -7,8 +7,8 @@
     gst_destination_port = 1212
     
 [Grabber]
-    save_frames = true
-    recordings_basedir = "recordings"
+    save_frames = false
+    recordings_dir = "recordings"
     enable_gst = true
     send_not_show = true
     show_frames_cv2 = true

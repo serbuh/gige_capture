@@ -68,7 +68,8 @@ class Configurator():
 
         # Grabber
         self.save_frames = self.config['Grabber']['save_frames']
-        self.recordings_basedir = self.config['Grabber']['recordings_basedir']
+        file_dir=pathlib.Path().resolve()
+        self.recordings_basedir = os.path.join(file_dir, self.config['Grabber']['recordings_dir'])
         self.enable_gst = self.config['Grabber']['enable_gst']
         self.send_not_show = self.config['Grabber']['send_not_show']
         self.show_frames_cv2 = self.config['Grabber']['show_frames_cv2']
@@ -78,14 +79,13 @@ class Configurator():
         
 
 class Grabber():
-    def __init__(self, logger, config_file_path, receive_cmds_channel, send_reports_channel, recordings_basedir, enable_gst, gst_destination, send_not_show, show_frames_cv2, artificial_frames, enable_messages_interface):
+    def __init__(self, logger, config_file_path, receive_cmds_channel, send_reports_channel, enable_gst, gst_destination, send_not_show, show_frames_cv2, artificial_frames, enable_messages_interface):
         self.logger = logger
         
         self.config = Configurator(logger, config_file_path)
         
         self.active_camera = self.config.active_camera
 
-        self.recordings_basedir = recordings_basedir
         self.enable_gst = enable_gst
         self.gst_destination = gst_destination
         self.send_not_show = send_not_show
@@ -113,9 +113,9 @@ class Grabber():
             cv2.namedWindow(self.window_name, cv2.WINDOW_AUTOSIZE)
         
         # Prepare save folder
-        if self.config.save_frames and self.recordings_basedir is not None:
+        if self.config.save_frames and self.config.recordings_basedir is not None:
             now = datetime.datetime.now().strftime("%y_%m_%d__%H_%M_%S")
-            self.recordings_full_path = os.path.join(self.recordings_basedir, now)
+            self.recordings_full_path = os.path.join(self.config.recordings_basedir, now)
             pathlib.Path(self.recordings_full_path).mkdir(parents=True, exist_ok=True) # Ensure dir existense
             self.logger.info(f"Saving frames to:\n{self.recordings_full_path}")
 
@@ -397,8 +397,6 @@ if __name__ == "__main__":
     logger.info("Welcome to Grabber")
 
     # Prepare params
-    file_dir=pathlib.Path().resolve()
-    recordings_basedir = os.path.join(file_dir, "recordings")
     #gst_destination = ("127.0.0.1", 5000)
     gst_destination = ("192.168.132.60", 1212)
 
@@ -407,10 +405,11 @@ if __name__ == "__main__":
 
     receive_cmds_channel = ("127.0.0.1", 5100)
     send_reports_channel = ("127.0.0.1", 5111)
-
+    
+    file_dir=pathlib.Path().resolve()
     config_file_path = os.path.join(file_dir, "config", "config.toml")
 
     # Start grabber
-    grabber = Grabber(logger, config_file_path, receive_cmds_channel, send_reports_channel, recordings_basedir=recordings_basedir, enable_gst=True, gst_destination=gst_destination, send_not_show=True, show_frames_cv2=True, artificial_frames=False, enable_messages_interface=True)
+    grabber = Grabber(logger, config_file_path, receive_cmds_channel, send_reports_channel, enable_gst=True, gst_destination=gst_destination, send_not_show=True, show_frames_cv2=True, artificial_frames=False, enable_messages_interface=True)
     grabber.frames_loop()
     logger.info("Bye!")
