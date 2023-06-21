@@ -18,7 +18,7 @@
 [Cams]
     cam_1_model = "mvBlueCOUGAR-X102eC"
     cam_2_model = "PT1000-CL4"
-    active_cam = 1
+    active_camera = "camera1"
 
 [mvBlueCOUGAR-X102eC]
     pixel_format = "PIXEL_FORMAT_BAYER_GR_8"

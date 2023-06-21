@@ -50,6 +50,11 @@ class Configurator():
                 traceback.print_exc()
                 self.logger.error("Failed to read toml")
                 exit()
+        try:
+            self.active_camera = cv_structs.activateCameraSensors[self.config['Cams']['active_camera']]
+        except Exception as e:
+            self.logger.error(f"{e}\nFailed to get active_camera from toml")
+            exit()
         
         # Cam 1
         self.cam_1_model = self.config['Cams']['cam_1_model']
@@ -69,6 +74,8 @@ class Grabber():
         
         self.config = Configurator(logger, config_file_path)
         
+        self.active_camera = self.config.active_camera
+
         self.save_frames = save_frames
         self.recordings_basedir = recordings_basedir
         self.enable_gst = enable_gst
@@ -285,8 +292,7 @@ class Grabber():
                 if self.enable_messages_interface:
                     # Send status
                     if self.send_status:
-                        active_camera = cv_structs.activateCameraSensors.camera1
-                        status_msg = cv_structs.create_status(frame_number, frame_number, int(self.last_fps), int(self.last_fps), bitrateKBs_1=10, bitrateKBs_2=10, active_camera=active_camera) # Create ctypes status
+                        status_msg = cv_structs.create_status(frame_number, frame_number, int(self.last_fps), int(self.last_fps), bitrateKBs_1=10, bitrateKBs_2=10, active_camera=self.active_camera) # Create ctypes status
                         self.communicator.send_ctypes_msg(status_msg) # Send status
                     
                     # Read receive queue
