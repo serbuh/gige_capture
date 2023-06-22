@@ -89,6 +89,13 @@ class Configurator():
             self.logger.info(f"\n> {cam_model} <\n{pprint.pformat(cam_config, indent=4, sort_dicts=False)}\n")
         return cam_config
 
+class Cam():
+    def __init__(self, logger, ip):
+        self.logger = logger
+        self.ip = ip
+        self.name = ip
+        self.logger.info(f"CAM {ip}")
+
 class Grabber():
     def __init__(self, logger, proj_path):
         self.logger = logger
@@ -103,7 +110,8 @@ class Grabber():
         self.last_fps = 0
         self.start_time = time.time()
 
-        # Init grabber
+        # Init grabbers
+        self.cams = [Cam(logger, self.config.cam_1_ip), Cam(logger, self.config.cam_2_ip)]
         if self.config.artificial_frames:
             self.fps = 20
             self.init_artificial_grabber(self.fps)
@@ -246,7 +254,11 @@ class Grabber():
         
         return frame_np, None
 
-    def frames_loop(self):
+    def main_loop(self):
+        
+        for cam in self.cams:
+            self.logger.info(f"Starting loop for cam {cam.name}")
+
         frame_number = 0
         while True:
             try:
@@ -399,5 +411,5 @@ if __name__ == "__main__":
 
     # Start grabber
     grabber = Grabber(logger, proj_path)
-    grabber.frames_loop()
+    grabber.main_loop()
     logger.info("Bye!")
