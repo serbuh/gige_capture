@@ -3,7 +3,7 @@ import cv2
 import numpy as np
 
 class FrameGenerator:
-    def __init__(self, frame_width, frame_height, fps):
+    def __init__(self, frame_width, frame_height, grab_fps):
         self.frames = []  # List of frames to be sent
         self.frame_counter = 0
         self.frame_width = frame_width
@@ -13,11 +13,11 @@ class FrameGenerator:
         self.font_thickness = 3
         self.text_color = (255, 255, 255)  # White color
         self.bg_color = (0, 0, 0)  # Black color
-        self.fps = fps
+        self.grab_fps = grab_fps
     
     def get_next_frame(self):
         # Sleep
-        time.sleep(1/self.fps)
+        time.sleep(1/self.grab_fps)
 
         # Create a black image
         frame = np.zeros((self.frame_height, self.frame_width, 3), dtype=np.uint8)

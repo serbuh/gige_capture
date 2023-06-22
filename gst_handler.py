@@ -4,11 +4,11 @@ gi.require_version('Gst', '1.0')
 from gi.repository import Gst
 
 class GstSender:
-    def __init__(self, logger, gst_destination, fps, send_not_show, from_testvideo):
+    def __init__(self, logger, gst_destination, grab_fps, send_not_show, from_testvideo):
         self.logger = logger
         self.host = gst_destination[0]
         self.port = gst_destination[1]
-        self.fps = fps
+        self.grab_fps = grab_fps
         self.send_not_show = send_not_show
         self.from_testvideo = from_testvideo
 
@@ -68,13 +68,13 @@ class GstSender:
             self.add_element_and_link("appsrc", "source") # Add source
 
         self.add_element_and_link("capsfilter", "capsfilter", link_to="source") # Create capsfilter
-        self.pipeline.get_by_name('capsfilter').set_property('caps', Gst.Caps.from_string(f'video/x-raw,format=(string)BGR,width=640,height=480,framerate={int(self.fps)}/1'))
+        self.pipeline.get_by_name('capsfilter').set_property('caps', Gst.Caps.from_string(f'video/x-raw,format=(string)BGR,width=640,height=480,framerate={int(self.grab_fps)}/1'))
         self.add_element_and_link("videoconvert", "videoconvert1", link_to="capsfilter") # Create videoconvert
 
 
     def create_send_pipeline(self):
         self.add_element_and_link("capsfilter", "capsfilter2", link_to="videoconvert1") # Create capsfilter2
-        self.pipeline.get_by_name('capsfilter2').set_property('caps', Gst.Caps.from_string(f'video/x-raw,format=(string)I420,width=640,height=480,framerate={int(self.fps)}/1'))
+        self.pipeline.get_by_name('capsfilter2').set_property('caps', Gst.Caps.from_string(f'video/x-raw,format=(string)I420,width=640,height=480,framerate={int(self.grab_fps)}/1'))
         self.add_element_and_link("queue", "queue", link_to="capsfilter2") # Create queue
         self.add_element_and_link("x265enc", "x265enc", link_to="queue") # Create x265enc
         self.pipeline.get_by_name("x265enc").set_property('tune', 'zerolatency') # x265enc tune=zerolatency to ensure less delay
