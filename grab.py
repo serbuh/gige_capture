@@ -71,7 +71,6 @@ class Configurator():
         self.enable_gst = self.config['Grabber']['enable_gst']
         self.send_not_show = self.config['Grabber']['send_not_show']
         self.show_frames_cv2 = self.config['Grabber']['show_frames_cv2']
-        self.artificial_frames = self.config['Grabber']['artificial_frames']
         self.enable_messages_interface = self.config['Grabber']['enable_messages_interface']
         self.send_status = self.config['Grabber']['send_status']
 
@@ -93,6 +92,12 @@ class Stream():
     def __init__(self, logger, ip):
         self.logger = logger
         self.ip = ip
+
+        if ip == "Artificial":
+            self.artificial = True
+        else:
+            self.artificial = False
+
         self.name = ip
         self.logger.info(f"CAM {ip}")
 
@@ -112,10 +117,10 @@ class Grabber():
 
         # Init streams (cameras / artificial frames)
         self.streams = [Stream(logger, self.config.cam_1_ip), Stream(logger, self.config.cam_2_ip)]
-
-        if self.config.artificial_frames:
+        
+        if self.streams[0].artificial:
             self.fps = 20
-            self.init_artificial_grabber(self.fps)
+            self.frame_generator = FrameGenerator(640, 480, fps=self.fps)
         else:
             self.fps = self.init_camera_grabber()
         
@@ -147,9 +152,6 @@ class Grabber():
             
         else:
             self.communicator = None
-
-    def init_artificial_grabber(self, fps):
-        self.frame_generator = FrameGenerator(640, 480, fps)
 
     def get_aravis_cam(self, cam_ip):
         self.logger.info(f"Connecting to camera on IP {cam_ip}")
@@ -284,7 +286,7 @@ class Grabber():
         frame_number = 0
         while True:
             try:
-                frame_np, cam_buffer = self.get_next_frame(self.config.artificial_frames)
+                frame_np, cam_buffer = self.get_next_frame(self.streams[0].artificial)
                 
                 if frame_np is None:
                     self.logger.warning("None frame")

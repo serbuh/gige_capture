@@ -12,7 +12,6 @@
     enable_gst = true
     send_not_show = true
     show_frames_cv2 = true
-    artificial_frames = false
     enable_messages_interface = true
     send_status = true
 
