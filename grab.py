@@ -89,12 +89,18 @@ class Configurator():
             self.logger.info(f"\n> {cam_model} <\n{pprint.pformat(cam_config, indent=4, sort_dicts=False)}\n")
         return cam_config
 
-class Cam():
+class Stream():
     def __init__(self, logger, ip):
         self.logger = logger
         self.ip = ip
         self.name = ip
         self.logger.info(f"CAM {ip}")
+
+        # Init FPS variables
+        self.frame_count_tot = 0
+        self.frame_count_fps = 0
+        self.last_fps = 0
+        self.start_time = time.time()
 
 class Grabber():
     def __init__(self, logger, proj_path):
@@ -104,14 +110,9 @@ class Grabber():
         
         self.active_camera = self.config.active_camera
 
-        # Init FPS variables
-        self.frame_count_tot = 0
-        self.frame_count_fps = 0
-        self.last_fps = 0
-        self.start_time = time.time()
+        # Init streams (cameras / artificial frames)
+        self.streams = [Stream(logger, self.config.cam_1_ip), Stream(logger, self.config.cam_2_ip)]
 
-        # Init grabbers
-        self.cams = [Cam(logger, self.config.cam_1_ip), Cam(logger, self.config.cam_2_ip)]
         if self.config.artificial_frames:
             self.fps = 20
             self.init_artificial_grabber(self.fps)
@@ -213,11 +214,11 @@ class Grabber():
         print (f"Payload       : {payload}")
         print (f"Pixel format  : {self.pixel_format_string}")
 
-        self.stream = self.camera.create_stream (None, None)
+        self.arv_stream = self.camera.create_stream(None, None)
 
         # Allocate aravis buffers
         for i in range(0,10):
-            self.stream.push_buffer (Aravis.Buffer.new_allocate (payload))
+            self.arv_stream.push_buffer(Aravis.Buffer.new_allocate(payload))
 
         print ("Start acquisition")
         self.camera.start_acquisition ()
@@ -226,7 +227,7 @@ class Grabber():
 
     def get_frame_from_camera(self):
         # Get frame
-        cam_buffer = self.stream.pop_buffer()
+        cam_buffer = self.arv_stream.pop_buffer()
 
         # Get raw buffer
         buf = cam_buffer.get_data()
@@ -247,25 +248,43 @@ class Grabber():
         
         
         return frame_np, cam_buffer
-    
-    def get_artificial_frames(self):
-        # Get frame
-        frame_np = self.frame_generator.get_next_frame()
+
+    def get_next_frame(self, artificial):
+        if artificial:
+            frame_np = self.frame_generator.get_next_frame()
+            cam_buffer = None
+        else:
+            # Get frame
+            cam_buffer = self.arv_stream.pop_buffer()
+
+            # Get raw buffer
+            buf = cam_buffer.get_data()
+            #self.logger.info(f"Bits per pixel {len(buf)/self.height/self.width}")
+            if self.pixel_format == Aravis.PIXEL_FORMAT_BAYER_GR_8:
+                frame_raw = np.frombuffer(buf, dtype='uint8').reshape( (self.height, self.width) )
+
+                # Bayer2RGB
+                frame_np = cv2.cvtColor(frame_raw, cv2.COLOR_BayerGR2RGB)
+            elif self.pixel_format == Aravis.PIXEL_FORMAT_MONO_8:
+                frame_raw = np.frombuffer(buf, dtype='uint8').reshape( (self.height, self.width) )
+
+                # Bayer2RGB
+                frame_np = cv2.cvtColor(frame_raw, cv2.COLOR_GRAY2RGB)
+            else:
+                self.logger.info(f"Convertion from {self.pixel_format_string} not supported")
+                frame_np = None
         
-        return frame_np, None
+        return frame_np, cam_buffer
 
     def main_loop(self):
         
-        for cam in self.cams:
-            self.logger.info(f"Starting loop for cam {cam.name}")
+        for stream in self.streams:
+            self.logger.info(f"Starting loop for stream {stream.name}")
 
         frame_number = 0
         while True:
             try:
-                if self.config.artificial_frames:
-                    frame_np, cam_buffer = self.get_artificial_frames()
-                else:
-                    frame_np, cam_buffer = self.get_frame_from_camera()
+                frame_np, cam_buffer = self.get_next_frame(self.config.artificial_frames)
                 
                 if frame_np is None:
                     self.logger.warning("None frame")
@@ -284,19 +303,19 @@ class Grabber():
                 
                 # Release cam_buffer
                 if cam_buffer:
-                    self.stream.push_buffer(cam_buffer)
+                    self.arv_stream.push_buffer(cam_buffer)
                 
                 # Print FPS
-                self.frame_count_fps += 1
-                self.frame_count_tot += 1
+                self.streams[0].frame_count_fps += 1
+                self.streams[0].frame_count_tot += 1
                 now = time.time()
-                elapsed_time = now-self.start_time
+                elapsed_time = now-self.streams[0].start_time
                 if elapsed_time >= 3.0:
-                    self.last_fps = self.frame_count_fps / elapsed_time
-                    self.logger.info(f"FPS: {self.last_fps}")
+                    self.streams[0].last_fps = self.streams[0].frame_count_fps / elapsed_time
+                    self.logger.info(f"FPS: {self.streams[0].last_fps}")
                     # Reset FPS counter
-                    self.start_time = now
-                    self.frame_count_fps = 0
+                    self.streams[0].start_time = now
+                    self.streams[0].frame_count_fps = 0
                 
                 # cv2 window key
                 key = cv2.waitKey(1)&0xff
@@ -310,7 +329,7 @@ class Grabber():
                 if self.config.enable_messages_interface:
                     # Send status
                     if self.config.send_status:
-                        status_msg = cv_structs.create_status(frame_number, frame_number, int(self.last_fps), int(self.last_fps), bitrateKBs_1=10, bitrateKBs_2=10, active_camera=self.active_camera) # Create ctypes status
+                        status_msg = cv_structs.create_status(frame_number, frame_number, int(self.streams[0].last_fps), int(self.streams[0].last_fps), bitrateKBs_1=10, bitrateKBs_2=10, active_camera=self.active_camera) # Create ctypes status
                         self.communicator.send_ctypes_msg(status_msg) # Send status
                     
                     # Read receive queue
@@ -325,7 +344,7 @@ class Grabber():
             
             except Exception:
                 traceback.print_exc()
-                self.logger.info(f'Exception on frame {self.frame_count_tot}')
+                self.logger.info(f'Exception on frame {self.streams[0].frame_count_tot}')
     
     def handle_command(self, item):
         self.logger.info(f">> Handle {type(item)}") # Server
