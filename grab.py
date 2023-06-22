@@ -149,10 +149,10 @@ class Grabber():
             
         except TypeError:
             self.logger.info(f"No camera found ({cam_ip})")
-            exit()
+            return None, None
         except Exception as e:
             self.logger.info(f"Some problem with camera ({cam_ip}): {e}")
-            exit()
+            return None, None
         
         cam_vendor = camera.get_vendor_name()
         self.logger.info(f"Camera vendor : {cam_vendor}")
@@ -165,7 +165,8 @@ class Grabber():
     def init_camera_grabber(self):
         
         self.camera, cam_model = self.get_aravis_cam(None)
-        
+        if self.camera is None:
+            exit()
         # self.camera_1 = self.get_aravis_cam(self.config.cam_1_ip) # near
         # self.camera_2 = self.get_aravis_cam(self.config.cam_2_ip) # Voxi
         
