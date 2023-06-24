@@ -38,6 +38,20 @@ from communication.udp_communicator import Communicator
 
 Aravis.enable_interface("Fake")
 
+
+class CamParams():
+    def __init__(self, pixel_format_str, pixel_format_arv, offset_x, offset_y, width, height, scale_x, scale_y, grab_fps, send_fps):
+        self.pixel_format_str = pixel_format_str
+        self.pixel_format_arv = pixel_format_arv
+        self.offset_x = offset_x
+        self.offset_y = offset_y
+        self.width    = width
+        self.height   = height
+        self.scale_x  = scale_x
+        self.scale_y  = scale_y
+        self.grab_fps = grab_fps
+        self.send_fps = send_fps
+
 class Configurator():
     def __init__(self, logger, proj_path):
         self.logger = logger
@@ -80,13 +94,26 @@ class Configurator():
         self.send_reports_channel = (str(self.config['Com']['send_reports_ip']), int(self.config['Com']['send_reports_port']))
     
     def get_cam_settings(self, cam_model):
-        cam_config = self.config.get(cam_model, None)
-        if cam_config is None:
+        cam_config_dict = self.config.get(cam_model, None)
+        if cam_config_dict is None:
             self.logger.error(f"No config for {cam_model}")
             exit()
         else:
-            self.logger.info(f"\n> {cam_model} <\n{pprint.pformat(cam_config, indent=4, sort_dicts=False)}\n")
-        return cam_config
+            self.logger.info(f"\n> {cam_model} <\n{pprint.pformat(cam_config_dict, indent=4, sort_dicts=False)}\n")
+            cam_params = CamParams(
+                pixel_format_str = cam_config_dict["pixel_format"],
+                pixel_format_arv = getattr(Aravis, cam_config_dict["pixel_format"]),
+                offset_x = int(cam_config_dict["offset_x"]),
+                offset_y = int(cam_config_dict["offset_y"]),
+                width    = int(cam_config_dict["width"]),
+                height   = int(cam_config_dict["height"]),
+                scale_x  = int(cam_config_dict["scale_x"]),
+                scale_y  = int(cam_config_dict["scale_y"]),
+                grab_fps = int(cam_config_dict["grab_fps"]),
+                send_fps = int(cam_config_dict["send_fps"]),
+            )
+        return cam_params
+
 
 class Stream():
     def __init__(self, logger, config, ip):
@@ -114,70 +141,29 @@ class Stream():
             self.logger.info(f"CAM {ip} initialized SUCCESSFULLY")
         else:
             self.logger.error(f"CAM {ip} initialize FAIL")
-    
+
     def init_grabber(self, ip):
         
         if ip == "Artificial":
             artificial = True
-            self.grab_fps = 20 # TODO put in streams
-            self.frame_generator = FrameGenerator(640, 480, grab_fps=self.grab_fps)
             self.cam_model = ip
-        else:
-            artificial = False
-            self.arv_camera, self.cam_model = self.get_aravis_cam(ip)
-            if self.arv_camera is None:
-                return False, artificial
-        
-        # Get config
-        self.cam_config = self.config.get_cam_settings(self.cam_model)
-        
-        # Get cam params
-        x = int(self.cam_config['offset_x'])
-        y = int(self.cam_config['offset_y'])
-        w = int(self.cam_config['width'])
-        h = int(self.cam_config['height'])
-        pixel_format = self.cam_config['pixel_format']
-        self.pixel_format = getattr(Aravis, pixel_format)
-        self.grab_fps = self.cam_config['send_fps'] # TODO add grab_fps
-        
-        # Stop here in case of artificial frames
-        if artificial:
+            self.cam_config = self.config.get_cam_settings(self.cam_model)
+            self.frame_generator = FrameGenerator(frame_width=self.cam_config.width, frame_height=self.cam_config.height, grab_fps=self.cam_config.grab_fps)
             return True, artificial
 
-        # Set camera params
-        try:
-            self.arv_camera.set_region(x,y,w,h)
-        except gi.repository.GLib.Error as e:
-            self.logger.info(f"{e}\nCould not set camera params. Camera is already in use?")
+        artificial = False
+        self.arv_camera, self.cam_model = self.get_arv_cam(ip)
+        self.cam_config = self.config.get_cam_settings(self.cam_model)
+        if self.arv_camera is None:
             return False, artificial
-        try:
-            #self.arv_camera.set_frame_rate(fps)
-            self.arv_camera.set_pixel_format(self.pixel_format)
-        except gi.repository.GLib.Error as e:
-            self.logger.info(f"{e}\nCould not set frame rate / pixel format params.")
-            return False, artificial
+        
+        # Set Aravis camer params
+        initialized, payload = self.set_arv_params() # Assumes self.cam_config
+        self.arv_stream = self.init_arv_stream(payload)
 
-        payload = self.arv_camera.get_payload ()
-        self.pixel_format_string = self.arv_camera.get_pixel_format_as_string()
-
-        [offset_x, offset_y, self.width, self.height] = self.arv_camera.get_region()
-
-        print (f"ROI           : {self.width}x{self.height} at {offset_x},{offset_y}")
-        print (f"Payload       : {payload}")
-        print (f"Pixel format  : {self.pixel_format_string}")
-
-        self.arv_stream = self.arv_camera.create_stream(None, None)
-
-        # Allocate aravis buffers
-        for i in range(0,10):
-            self.arv_stream.push_buffer(Aravis.Buffer.new_allocate(payload))
-
-        print ("Start acquisition")
-        self.arv_camera.start_acquisition()
-
-        return True, artificial
+        return initialized, artificial
     
-    def get_aravis_cam(self, cam_ip):
+    def get_arv_cam(self, cam_ip):
         self.logger.info(f"Connecting to camera on IP {cam_ip}")
         try:
             camera = Aravis.Camera.new(None)
@@ -196,6 +182,60 @@ class Stream():
         self.logger.info(f"Camera model  : {cam_model}")
 
         return camera, cam_model
+
+    def set_arv_params(self):
+        # Set ROI
+        try:
+            self.arv_camera.set_region(
+                self.cam_config.offset_x,
+                self.cam_config.offset_y,
+                self.cam_config.width,
+                self.cam_config.height
+            )
+        except gi.repository.GLib.Error as e:
+            self.logger.error(f"{e}\nCould not set camera params. Camera is already in use?")
+            return False, None
+        
+        [offset_x, offset_y, width, height] = self.arv_camera.get_region()
+        if offset_x != self.cam_config.offset_x or \
+           offset_y != self.cam_config.offset_y or \
+           width    != self.cam_config.width or \
+           height   != self.cam_config.height:
+            self.logger.error(f"Wrong camera region.\nExpected: ({self.cam_config.offset_x}, {self.cam_config.offset_y}, {self.cam_config.width}, {self.cam_config.height})\nGot:     ({offset_x}, {offset_y}, {width}, {height})")
+            return False, None
+        
+        self.logger.info(f"ROI           : {width}x{height} at {offset_x},{offset_y}")
+        
+        # Set Pixel format and rate
+        try:
+            #self.arv_camera.set_frame_rate(fps) # TODO set frame rate if not nan
+            self.arv_camera.set_pixel_format(self.cam_config.pixel_format_arv)
+        except gi.repository.GLib.Error as e:
+            self.logger.error(f"{e}\nCould not set frame rate / pixel format params.")
+            return False, None
+        
+        pixel_format_string = self.arv_camera.get_pixel_format_as_string()
+
+        self.logger.info(f"Pixel format  : {pixel_format_string} ({self.cam_config.pixel_format_str})")
+
+        # Get payload
+        payload = self.arv_camera.get_payload()
+        
+        self.logger.info(f"Payload       : {payload}")
+        
+        return True, payload
+    
+    def init_arv_stream(self, payload):
+        arv_stream = self.arv_camera.create_stream(None, None)
+
+        # Allocate aravis buffers
+        for i in range(0,10):
+            arv_stream.push_buffer(Aravis.Buffer.new_allocate(payload))
+
+        self.logger.info("Start acquisition")
+        self.arv_camera.start_acquisition()
+
+        return arv_stream
 
 class Grabber():
     def __init__(self, logger, proj_path):
@@ -222,7 +262,7 @@ class Grabber():
 
         # Send frames options
         if self.config.enable_gst:
-            self.gst_sender = GstSender(self.logger, self.config.gst_destination, self.streams[0].grab_fps, self.config.send_not_show, from_testvideo=False)
+            self.gst_sender = GstSender(self.logger, self.config.gst_destination, self.streams[0].cam_config.send_fps, self.config.send_not_show, from_testvideo=False)
         else:
             self.gst_sender = None
         
@@ -248,18 +288,18 @@ class Grabber():
             # Get raw buffer
             buf = cam_buffer.get_data()
             #self.logger.info(f"Bits per pixel {len(buf)/self.height/self.width}")
-            if self.streams[0].pixel_format == Aravis.PIXEL_FORMAT_BAYER_GR_8:
-                frame_raw = np.frombuffer(buf, dtype='uint8').reshape( (self.streams[0].height, self.streams[0].width) )
+            if self.streams[0].cam_config.pixel_format_str == "PIXEL_FORMAT_BAYER_GR_8":
+                frame_raw = np.frombuffer(buf, dtype='uint8').reshape((self.streams[0].cam_config.height, self.streams[0].cam_config.width))
 
                 # Bayer2RGB
                 frame_np = cv2.cvtColor(frame_raw, cv2.COLOR_BayerGR2RGB)
-            elif self.streams[0].pixel_format == Aravis.PIXEL_FORMAT_MONO_8:
-                frame_raw = np.frombuffer(buf, dtype='uint8').reshape( (self.streams[0].height, self.streams[0].width) )
+            elif self.streams[0].cam_config.pixel_format_str == "PIXEL_FORMAT_MONO_8":
+                frame_raw = np.frombuffer(buf, dtype='uint8').reshape((self.streams[0].cam_config.height, self.streams[0].cam_config.width))
 
                 # Bayer2RGB
                 frame_np = cv2.cvtColor(frame_raw, cv2.COLOR_GRAY2RGB)
             else:
-                self.logger.info(f"Convertion from {self.streams[0].pixel_format_string} not supported")
+                self.logger.info(f"Convertion from {self.streams[0].cam_config.pixel_format_str} not supported")
                 frame_np = None
         
         return frame_np, cam_buffer
