@@ -3,15 +3,17 @@ import cv2
 import numpy as np
 import gi
 
+from video_feeders.video_feeder_interface import VideoFeeder
+
 gi.require_version('Aravis', '0.8')
 from gi.repository import Aravis
 
 
 Aravis.enable_interface("Fake")
 
-class ArvCamera:
+class ArvCamera(VideoFeeder):
     def __init__(self, logger):
-        self.artificial = False
+        VideoFeeder.__init__(self, False)
         self.logger = logger
         
         self.arv_camera = None

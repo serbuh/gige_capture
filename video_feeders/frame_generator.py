@@ -2,9 +2,11 @@ import time
 import cv2
 import numpy as np
 
-class FrameGenerator:
+from video_feeders.video_feeder_interface import VideoFeeder
+
+class FrameGenerator(VideoFeeder):
     def __init__(self, logger, cam_config):
-        self.artificial = True
+        VideoFeeder.__init__(self, True)
         self.logger = logger
         self.frames = []  # List of frames to be sent
         self.frame_counter = 0
@@ -16,9 +18,6 @@ class FrameGenerator:
         self.font_thickness = 3
         self.text_color = (255, 255, 255)  # White color
         self.bg_color = (0, 0, 0)  # Black color
-
-    def is_artificial(self):
-        return self.artificial
     
     def get_next_frame(self):
         # Sleep
