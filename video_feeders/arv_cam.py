@@ -145,3 +145,6 @@ class ArvCamera(VideoFeeder):
             frame_np = None
         
         return frame_np, cam_buffer
+    
+    def stop_acquisition(self):
+        self.arv_camera.stop_acquisition()

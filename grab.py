@@ -137,17 +137,18 @@ class Stream():
             self.cam_config = self.config.get_cam_settings(ip)
             self.video_feeder = FrameGenerator(self.logger, self.cam_config)
             return True
-
-        self.video_feeder = ArvCamera(self.logger)
-        connected = self.video_feeder.connect_to_cam(ip)
-        if connected is False:
-            return False
         
-        self.cam_config = self.config.get_cam_settings(self.video_feeder.cam_model)
-        self.video_feeder.set_cam_config(self.cam_config)
-        initialized = self.video_feeder.initialize()
-        
-        return initialized
+        else:
+            self.video_feeder = ArvCamera(self.logger)
+            connected = self.video_feeder.connect_to_cam(ip)
+            if connected is False:
+                return False
+            
+            self.cam_config = self.config.get_cam_settings(self.video_feeder.cam_model)
+            self.video_feeder.set_cam_config(self.cam_config)
+            initialized = self.video_feeder.initialize()
+            
+            return initialized
     
 
 class Grabber():
@@ -279,7 +280,7 @@ class Grabber():
         self.logger.info("Stop the camera grabbing")
         try:
             if not self.streams[0].artificial:
-                self.streams[0].arv_camera.stop_acquisition()
+                self.streams[0].video_feeder.stop_acquisition()
         except:
             traceback.print_exc()
             self.logger.info("Exception during closing camera grabbing")
