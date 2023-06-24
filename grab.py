@@ -17,7 +17,6 @@
 import sys
 import time
 import os
-import gi
 import numpy as np
 import cv2
 import logging
@@ -28,21 +27,17 @@ import traceback
 import tomli
 import pprint
 
-gi.require_version('Aravis', '0.8')
-from gi.repository import Aravis
-
 from gst_handler import GstSender
-from frame_generator import FrameGenerator
+from video_feeders.frame_generator import FrameGenerator
+from video_feeders.arv_cam import ArvCamera
 from ICD import cv_structs
 from communication.udp_communicator import Communicator
 
-Aravis.enable_interface("Fake")
 
 
 class CamParams():
-    def __init__(self, pixel_format_str, pixel_format_arv, offset_x, offset_y, width, height, scale_x, scale_y, grab_fps, send_fps):
+    def __init__(self, pixel_format_str, offset_x, offset_y, width, height, scale_x, scale_y, grab_fps, send_fps):
         self.pixel_format_str = pixel_format_str
-        self.pixel_format_arv = pixel_format_arv
         self.offset_x = offset_x
         self.offset_y = offset_y
         self.width    = width
@@ -102,7 +97,6 @@ class Configurator():
             self.logger.info(f"\n> {cam_model} <\n{pprint.pformat(cam_config_dict, indent=4, sort_dicts=False)}\n")
             cam_params = CamParams(
                 pixel_format_str = cam_config_dict["pixel_format"],
-                pixel_format_arv = getattr(Aravis, cam_config_dict["pixel_format"]),
                 offset_x = int(cam_config_dict["offset_x"]),
                 offset_y = int(cam_config_dict["offset_y"]),
                 width    = int(cam_config_dict["width"]),
@@ -121,11 +115,6 @@ class Stream():
         self.config = config
         self.ip = ip
 
-        if ip == "Artificial":
-            self.artificial = True
-        else:
-            self.artificial = False
-
         self.logger.info(f"CAM {ip}")
 
         # Init FPS variables
@@ -135,8 +124,8 @@ class Stream():
         self.start_time = time.time()
 
         # Init grabber
-        self.cam_model = None
-        self.initialized, self.artificial = self.init_grabber(ip)
+        self.initialized = self.init_grabber(ip)
+        self.artificial = self.video_feeder.is_artificial()
         if self.initialized:
             self.logger.info(f"CAM {ip} initialized SUCCESSFULLY")
         else:
@@ -145,97 +134,21 @@ class Stream():
     def init_grabber(self, ip):
         
         if ip == "Artificial":
-            artificial = True
-            self.cam_model = ip
-            self.cam_config = self.config.get_cam_settings(self.cam_model)
-            self.frame_generator = FrameGenerator(frame_width=self.cam_config.width, frame_height=self.cam_config.height, grab_fps=self.cam_config.grab_fps)
-            return True, artificial
+            self.cam_config = self.config.get_cam_settings(ip)
+            self.video_feeder = FrameGenerator(self.logger, self.cam_config)
+            return True
 
-        artificial = False
-        self.arv_camera, self.cam_model = self.get_arv_cam(ip)
-        self.cam_config = self.config.get_cam_settings(self.cam_model)
-        if self.arv_camera is None:
-            return False, artificial
+        self.video_feeder = ArvCamera(self.logger)
+        connected = self.video_feeder.connect_to_cam(ip)
+        if connected is False:
+            return False
         
-        # Set Aravis camer params
-        initialized, payload = self.set_arv_params() # Assumes self.cam_config
-        self.arv_stream = self.init_arv_stream(payload)
-
-        return initialized, artificial
+        self.cam_config = self.config.get_cam_settings(self.video_feeder.cam_model)
+        self.video_feeder.set_cam_config(self.cam_config)
+        initialized = self.video_feeder.initialize()
+        
+        return initialized
     
-    def get_arv_cam(self, cam_ip):
-        self.logger.info(f"Connecting to camera on IP {cam_ip}")
-        try:
-            camera = Aravis.Camera.new(None)
-            
-        except TypeError:
-            self.logger.info(f"No camera found ({cam_ip})")
-            return None, None
-        except Exception as e:
-            self.logger.info(f"Some problem with camera ({cam_ip}): {e}")
-            return None, None
-        
-        cam_vendor = camera.get_vendor_name()
-        self.logger.info(f"Camera vendor : {cam_vendor}")
-        
-        cam_model = camera.get_model_name()
-        self.logger.info(f"Camera model  : {cam_model}")
-
-        return camera, cam_model
-
-    def set_arv_params(self):
-        # Set ROI
-        try:
-            self.arv_camera.set_region(
-                self.cam_config.offset_x,
-                self.cam_config.offset_y,
-                self.cam_config.width,
-                self.cam_config.height
-            )
-        except gi.repository.GLib.Error as e:
-            self.logger.error(f"{e}\nCould not set camera params. Camera is already in use?")
-            return False, None
-        
-        [offset_x, offset_y, width, height] = self.arv_camera.get_region()
-        if offset_x != self.cam_config.offset_x or \
-           offset_y != self.cam_config.offset_y or \
-           width    != self.cam_config.width or \
-           height   != self.cam_config.height:
-            self.logger.error(f"Wrong camera region.\nExpected: ({self.cam_config.offset_x}, {self.cam_config.offset_y}, {self.cam_config.width}, {self.cam_config.height})\nGot:     ({offset_x}, {offset_y}, {width}, {height})")
-            return False, None
-        
-        self.logger.info(f"ROI           : {width}x{height} at {offset_x},{offset_y}")
-        
-        # Set Pixel format and rate
-        try:
-            #self.arv_camera.set_frame_rate(fps) # TODO set frame rate if not nan
-            self.arv_camera.set_pixel_format(self.cam_config.pixel_format_arv)
-        except gi.repository.GLib.Error as e:
-            self.logger.error(f"{e}\nCould not set frame rate / pixel format params.")
-            return False, None
-        
-        pixel_format_string = self.arv_camera.get_pixel_format_as_string()
-
-        self.logger.info(f"Pixel format  : {pixel_format_string} ({self.cam_config.pixel_format_str})")
-
-        # Get payload
-        payload = self.arv_camera.get_payload()
-        
-        self.logger.info(f"Payload       : {payload}")
-        
-        return True, payload
-    
-    def init_arv_stream(self, payload):
-        arv_stream = self.arv_camera.create_stream(None, None)
-
-        # Allocate aravis buffers
-        for i in range(0,10):
-            arv_stream.push_buffer(Aravis.Buffer.new_allocate(payload))
-
-        self.logger.info("Start acquisition")
-        self.arv_camera.start_acquisition()
-
-        return arv_stream
 
 class Grabber():
     def __init__(self, logger, proj_path):
@@ -245,7 +158,7 @@ class Grabber():
         
         self.active_camera = self.config.active_camera
 
-        # Init streams (cameras / artificial frames)
+        # Init streams
         self.streams = [Stream(logger, self.config, self.config.cam_1_ip), Stream(logger, self.config, self.config.cam_2_ip)]
         
         # Show frames options
@@ -277,33 +190,6 @@ class Grabber():
         else:
             self.communicator = None
 
-    def get_next_frame(self, artificial):
-        if artificial:
-            frame_np = self.streams[0].frame_generator.get_next_frame()
-            cam_buffer = None
-        else:
-            # Get frame
-            cam_buffer = self.streams[0].arv_stream.pop_buffer()
-
-            # Get raw buffer
-            buf = cam_buffer.get_data()
-            #self.logger.info(f"Bits per pixel {len(buf)/self.height/self.width}")
-            if self.streams[0].cam_config.pixel_format_str == "PIXEL_FORMAT_BAYER_GR_8":
-                frame_raw = np.frombuffer(buf, dtype='uint8').reshape((self.streams[0].cam_config.height, self.streams[0].cam_config.width))
-
-                # Bayer2RGB
-                frame_np = cv2.cvtColor(frame_raw, cv2.COLOR_BayerGR2RGB)
-            elif self.streams[0].cam_config.pixel_format_str == "PIXEL_FORMAT_MONO_8":
-                frame_raw = np.frombuffer(buf, dtype='uint8').reshape((self.streams[0].cam_config.height, self.streams[0].cam_config.width))
-
-                # Bayer2RGB
-                frame_np = cv2.cvtColor(frame_raw, cv2.COLOR_GRAY2RGB)
-            else:
-                self.logger.info(f"Convertion from {self.streams[0].cam_config.pixel_format_str} not supported")
-                frame_np = None
-        
-        return frame_np, cam_buffer
-
     def main_loop(self):
         
         for stream in self.streams:
@@ -312,7 +198,7 @@ class Grabber():
         frame_number = 0
         while True:
             try:
-                frame_np, cam_buffer = self.get_next_frame(self.streams[0].artificial)
+                frame_np, cam_buffer = self.streams[0].video_feeder.get_next_frame()
                 
                 if frame_np is None:
                     self.logger.warning("None frame")
@@ -331,7 +217,7 @@ class Grabber():
                 
                 # Release cam_buffer
                 if cam_buffer:
-                    self.streams[0].arv_stream.push_buffer(cam_buffer)
+                    self.streams[0].video_feeder.release_cam_buffer(cam_buffer)
                 
                 # Print FPS
                 self.streams[0].frame_count_fps += 1

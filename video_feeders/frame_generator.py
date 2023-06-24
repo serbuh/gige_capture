@@ -3,17 +3,22 @@ import cv2
 import numpy as np
 
 class FrameGenerator:
-    def __init__(self, frame_width, frame_height, grab_fps):
+    def __init__(self, logger, cam_config):
+        self.artificial = True
+        self.logger = logger
         self.frames = []  # List of frames to be sent
         self.frame_counter = 0
-        self.frame_width = frame_width
-        self.frame_height = frame_height
+        self.frame_width  = cam_config.width
+        self.frame_height = cam_config.height
+        self.grab_fps     = cam_config.grab_fps
         self.font = cv2.FONT_HERSHEY_SIMPLEX
         self.font_scale = 2
         self.font_thickness = 3
         self.text_color = (255, 255, 255)  # White color
         self.bg_color = (0, 0, 0)  # Black color
-        self.grab_fps = grab_fps
+
+    def is_artificial(self):
+        return self.artificial
     
     def get_next_frame(self):
         # Sleep
@@ -31,4 +36,9 @@ class FrameGenerator:
         cv2.putText(frame, counter_text, (text_x, text_y), self.font, self.font_scale, self.text_color, self.font_thickness, cv2.LINE_AA)
         
         self.frame_counter += 1
-        return frame
+        cam_buffer = None # In order to be generic and support aravis buffers
+
+        return frame, cam_buffer
+    
+    def release_cam_buffer(self, cam_buffer):
+        pass
