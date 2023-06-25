@@ -22,9 +22,6 @@ class ArvCamera(VideoFeeder):
         self.cam_config = None
         self.arv_stream = None
     
-    def is_artificial(self):
-        return self.artificial
-    
     def connect_to_cam(self, ip):
         self.arv_camera, self.cam_model = self.get_arv_cam(ip)
         if self.arv_camera is None:

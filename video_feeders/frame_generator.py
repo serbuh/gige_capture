@@ -8,6 +8,7 @@ class FrameGenerator(VideoFeeder):
     def __init__(self, logger, cam_config):
         VideoFeeder.__init__(self, True)
         self.logger = logger
+        self.cam_model = "Artificial"
         self.frames = []  # List of frames to be sent
         self.frame_counter = 0
         self.frame_width  = cam_config.width

@@ -115,8 +115,8 @@ class Stream():
         self.logger = logger
         self.config = config
         self.ip = ip
-
-        self.logger.info(f"CAM {ip}")
+        
+        self.logger.info(f"   Init stream   {ip}   ".center(70, "#"))
 
         # Init FPS variables
         self.frame_count_tot = 0
@@ -128,9 +128,10 @@ class Stream():
         self.initialized = self.init_grabber(ip)
         self.artificial = self.video_feeder.is_artificial()
         if self.initialized:
-            self.logger.info(f"CAM {ip} initialized SUCCESSFULLY")
+            result_str = "INITIALIZED"
         else:
-            self.logger.error(f"CAM {ip} initialize FAIL")
+            result_str = "FAILED to initialized"
+        self.logger.info(f"   Stream   {ip}   {result_str}   ".center(70, "#"))
 
     def init_grabber(self, ip):
         
@@ -162,6 +163,12 @@ class Grabber():
 
         # Init streams
         self.streams = [Stream(logger, self.config, self.config.cam_1_ip), Stream(logger, self.config, self.config.cam_2_ip)]
+        stream_names = [x.video_feeder.get_cam_model() for x in self.streams]
+        init_status = ["OK" if x.initialized else "BAD" for x in self.streams]
+        res_str = "\n"
+        for name_status in zip(stream_names, init_status):
+            res_str += f"{name_status[0]:30}: {name_status[1]}\n"
+        self.logger.info(res_str)
         
         # Show frames options
         if self.config.show_frames_cv2:
