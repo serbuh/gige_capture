@@ -121,34 +121,35 @@ class Streams():
         # Init streams
         self.list = [Stream(logger, self.config, self.config.cam_first), Stream(logger, self.config, self.config.cam_second)]
         
-        # Print streams status
-        stream_names = [x.get_stream_name() for x in self.list]
-        init_status = ["OK" if x.initialized else "BAD" for x in self.list]
-        res_str = "\n"
-        for name_status in zip(stream_names, init_status):
-            res_str += f"{name_status[0]:30}: {name_status[1]}\n"
-        self.logger.info(res_str)
-
+        self.print_streams_status()
         
         for stream in self.get_streams():
-            # Show frames with cv2
-            # NOTE: Deprecated
-            # if False and stream.stream_params.show_frames_cv2:
-            #     cv2.namedWindow(stream.get_stream_name(), cv2.WINDOW_AUTOSIZE)
+            if stream.initialized:
+                # Show frames with cv2
+                # NOTE: Deprecated
+                # if False and stream.stream_params.show_frames_cv2:
+                #     cv2.namedWindow(stream.get_stream_name(), cv2.WINDOW_AUTOSIZE)
 
-            # Prepare save folder
-            if stream.stream_params.save_frames and stream.stream_params.recordings_basedir is not None:
-                now = datetime.datetime.now().strftime("%y_%m_%d__%H_%M_%S")
-                stream.recordings_full_path = os.path.join(stream.stream_params.recordings_basedir, now)
-                pathlib.Path(stream.recordings_full_path).mkdir(parents=True, exist_ok=True) # Ensure dir existense
-                self.logger.info(f"Saving frames to:\n{stream.recordings_full_path}")
+                # Prepare save folder
+                if stream.stream_params.save_frames and stream.stream_params.recordings_basedir is not None:
+                    now = datetime.datetime.now().strftime("%y_%m_%d__%H_%M_%S")
+                    stream.recordings_full_path = os.path.join(stream.stream_params.recordings_basedir, now)
+                    pathlib.Path(stream.recordings_full_path).mkdir(parents=True, exist_ok=True) # Ensure dir existense
+                    self.logger.info(f"Saving frames to:\n{stream.recordings_full_path}")
 
-            # Send frames options
-            if stream.stream_params.enable_gst:
-                stream.gst_sender = GstSender(self.logger, stream.stream_params.gst_destination, stream.cam_config.send_fps, stream.stream_params.show_frames_gst, stream.stream_params.send_frames_gst, from_testvideo=False)
-            else:
-                stream.gst_sender = None
+                # Send frames options
+                if stream.stream_params.enable_gst:
+                    stream.gst_sender = GstSender(self.logger, stream.stream_params.gst_destination, stream.cam_config.send_fps, stream.stream_params.show_frames_gst, stream.stream_params.send_frames_gst, from_testvideo=False)
+                else:
+                    stream.gst_sender = None
     
+    def print_streams_status(self):
+        res_str = "\n"
+        for stream in self.get_streams():
+            res_str += f"{stream.stream_ip:16} {stream.get_stream_name():30} {'OK' if stream.initialized else 'BAD'}\n"
+        
+        self.logger.info(res_str)
+
     def get_streams(self):
         return self.list
 
@@ -160,8 +161,9 @@ class Stream():
         self.recordings_full_path = None
         self.gst_sender = None
         self.loop_thread = None
-
-        self.logger.info(f"   Init stream   {self.stream_params.ip}   ".center(70, "#"))
+        self.stream_ip = self.stream_params.ip
+        
+        self.logger.info(f"   Init stream   {self.stream_ip}   ".center(70, "#"))
 
         # Init FPS variables
         self.frame_count_tot = 0
@@ -170,14 +172,16 @@ class Stream():
         self.start_time = time.time()
 
         # Init grabber
-        self.initialized = self.init_grabber(self.stream_params.ip)
+        self.initialized = self.init_grabber(self.stream_ip)
         self.artificial = self.video_feeder.is_artificial()
         if self.initialized:
             result_str = "INITIALIZED"
         else:
             result_str = "FAILED to initialized"
         
-        self.logger.info(f"   Stream   {self.stream_params.ip}   {result_str}   ".center(70, "#"))
+        stream_name = self.video_feeder.cam_model
+        self.stream_name = stream_name if stream_name is not None else "No Name"
+        self.logger.info(f"   Stream   {self.stream_ip}   {result_str}   ".center(70, "#"))
 
     def init_grabber(self, ip):
         
@@ -199,7 +203,7 @@ class Stream():
             return initialized
     
     def get_stream_name(self):
-        return self.video_feeder.cam_model
+        return self.stream_name
     
 class Grabber():
     def __init__(self, logger, proj_path):
@@ -226,9 +230,12 @@ class Grabber():
     def start_loops(self):
         try:
             for stream in self.streams.get_streams():
-                self.logger.info(f"Starting loop for stream {stream.get_stream_name()}")
-                stream.loop_thread = threading.Thread(target=self.stream_thread, args=(stream,))
-                stream.loop_thread.start()
+                if stream.initialized:
+                    self.logger.info(f"Starting loop for stream {stream.get_stream_name()}")
+                    stream.loop_thread = threading.Thread(target=self.stream_thread, args=(stream,))
+                    stream.loop_thread.start()
+                else:
+                    self.logger.info(f"Stream {stream.get_stream_name()} is not initialized. Loop is not started")
 
             self.logger.info("Starting status loop")
             

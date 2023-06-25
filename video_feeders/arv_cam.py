@@ -44,7 +44,7 @@ class ArvCamera(VideoFeeder):
     def get_arv_cam(self, cam_ip):
         self.logger.info(f"Connecting to camera on IP {cam_ip}")
         try:
-            camera = Aravis.Camera.new(None)
+            camera = Aravis.Camera.new(cam_ip)
             
         except TypeError:
             self.logger.info(f"No camera found ({cam_ip})")

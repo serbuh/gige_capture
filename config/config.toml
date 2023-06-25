@@ -13,7 +13,7 @@
     active_camera = "camera1"
 
     [Cams.first]
-        ip = "192.168.132.210" # Near IR
+        ip = "192.168.132.210" # Artificial / 192.168.132.210
         enable_gst = true
         gst_destination_ip = "127.0.0.1"        # "192.168.132.60"
         gst_destination_port = 5000             # 5000
@@ -23,8 +23,7 @@
         show_frames_gst = true
     
     [Cams.second]
-        #ip = "192.168.132.211" # Bolo
-        ip = "Artificial" # Bolo
+        ip = "192.168.132.211" # Artificial / 192.168.132.211
         enable_gst = true
         gst_destination_ip = "127.0.0.1"        # "192.168.132.60"
         gst_destination_port = 5001             # 5001
