@@ -4,12 +4,13 @@ gi.require_version('Gst', '1.0')
 from gi.repository import Gst
 
 class GstSender:
-    def __init__(self, logger, gst_destination, send_fps, send_not_show, from_testvideo):
+    def __init__(self, logger, gst_destination, send_fps, show_frames_gst, send_not_show, from_testvideo):
         self.logger = logger
         self.host = gst_destination[0]
         self.port = gst_destination[1]
         self.send_fps = send_fps
         self.send_not_show = send_not_show
+        self.show_frames_gst = show_frames_gst
         self.from_testvideo = from_testvideo
 
         self.pipeline_video_read() # Create the video read part of the pipeline

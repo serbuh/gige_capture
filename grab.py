@@ -26,6 +26,7 @@ import queue
 import traceback
 import tomli
 import pprint
+import threading
 
 from gst_handler import GstSender
 from video_feeders.frame_generator import FrameGenerator
@@ -71,6 +72,7 @@ class Configurator():
             def __init__(self, cam_config_section, file_dir):
                 self.ip                  = cam_config_section['ip']
                 self.show_frames_cv2     = cam_config_section['show_frames_cv2']
+                self.show_frames_gst     = cam_config_section['show_frames_gst']
                 self.save_frames         = cam_config_section['save_frames']
                 self.recordings_basedir  = os.path.join(file_dir, cam_config_section['recordings_dir'])
                 self.enable_gst          = cam_config_section['enable_gst']
@@ -131,7 +133,7 @@ class Streams():
         
         for stream in self.get_streams():
             # Show frames with cv2
-            if stream.stream_params.show_frames_cv2:
+            if False and stream.stream_params.show_frames_cv2:
                 cv2.namedWindow(stream.get_stream_name(), cv2.WINDOW_AUTOSIZE)
 
             # Prepare save folder
@@ -143,7 +145,7 @@ class Streams():
 
             # Send frames options
             if stream.stream_params.enable_gst:
-                stream.gst_sender = GstSender(self.logger, stream.stream_params.gst_destination, stream.cam_config.send_fps, stream.stream_params.send_not_show, from_testvideo=False)
+                stream.gst_sender = GstSender(self.logger, stream.stream_params.gst_destination, stream.cam_config.send_fps, stream.stream_params.show_frames_gst, stream.stream_params.send_not_show, from_testvideo=False)
             else:
                 stream.gst_sender = None
     
@@ -157,6 +159,7 @@ class Stream():
         self.stream_params = stream_params
         self.recordings_full_path = None
         self.gst_sender = None
+        self.loop_thread = None
 
         self.logger.info(f"   Init stream   {self.stream_params.ip}   ".center(70, "#"))
 
@@ -201,7 +204,7 @@ class Stream():
 class Grabber():
     def __init__(self, logger, proj_path):
         self.logger = logger
-        
+        self.keep_going = True
         self.config = Configurator(logger, proj_path)
         
         self.active_camera = self.config.active_camera
@@ -220,69 +223,85 @@ class Grabber():
         else:
             self.communicator = None
 
-    def main_loop(self):
-        
-        for stream in self.streams.list:
-            self.logger.info(f"Starting loop for stream {stream.stream_params.ip}")
+    def start_loops(self):
+        try:
+            for stream in self.streams.get_streams():
+                self.logger.info(f"Starting loop for stream {stream.get_stream_name()}")
+                stream.loop_thread = threading.Thread(target=self.stream_thread, args=(stream,))
+                stream.loop_thread.start()
 
-        frame_number = 0
-        while True:
-            try:
-                frame_np, cam_buffer = self.streams.list[0].video_feeder.get_next_frame()
-                
-                if frame_np is None:
-                    self.logger.warning("None frame")
-                    continue
+            self.logger.info("Starting status loop")
+            
+            while self.keep_going:
+                frame_number = 300 # TODO
 
-                for stream in self.streams.get_streams():
-                    # Show frame
-                    if stream.stream_params.show_frames_cv2 and frame_np is not None:
-                        cv2.imshow(stream.get_stream_name(), frame_np)
-
-                    # Save frame
-                    if stream.stream_params.save_frames:
-                        cv2.imwrite(os.path.join(stream.recordings_full_path, f"{frame_number}.tiff"), frame_np)
-                        #self.logger.info(os.path.join(stream.recordings_full_path, f"{frame_number}.tiff"))
-
-                    # Send frames
-                    if stream.gst_sender is not None:
-                        stream.gst_sender.send_frame(frame_np)
-                
-                    # Release cam_buffer
-                    if cam_buffer:
-                        stream.video_feeder.release_cam_buffer(cam_buffer)
-                
-                    # Print FPS
-                    stream.frame_count_fps += 1
-                    stream.frame_count_tot += 1
-                    now = time.time()
-                    elapsed_time = now-stream.start_time
-                    if elapsed_time >= 3.0:
-                        stream.last_fps = stream.frame_count_fps / elapsed_time
-                        self.logger.info(f"FPS: {stream.last_fps:.2f} Hz  ({stream.get_stream_name()})")
-                        # Reset FPS counter
-                        stream.start_time = now
-                        stream.frame_count_fps = 0
-                
-                # cv2 window key
-                key = cv2.waitKey(1)&0xff
-                if key == ord('q'):
-                    self.destroy_all()
-                    break
-
-                frame_number+=1
-
-                # Receive commands / Send reports
+                # Receive commands / Send reports # TODO separate from stream loop
                 if self.config.enable_messages_interface:
                     # Send status
                     if self.config.send_status:
-                        status_msg = cv_structs.create_status(frame_number, frame_number, int(self.streams.list[0].last_fps), int(self.streams.list[0].last_fps), bitrateKBs_1=10, bitrateKBs_2=10, active_camera=self.active_camera) # Create ctypes status
+                        status_msg = cv_structs.create_status(frame_number, frame_number, int(stream.last_fps), int(stream.last_fps), bitrateKBs_1=10, bitrateKBs_2=10, active_camera=self.active_camera) # Create ctypes status
                         self.communicator.send_ctypes_msg(status_msg) # Send status
                     
                     # Read receive queue
                     while not self.new_messages_queue.empty():
                         item = self.new_messages_queue.get_nowait()
                         self.handle_command(item)
+                
+                time.sleep(1)
+        
+        except KeyboardInterrupt:
+                self.logger.info("Interrupted from main thread by Ctrl+C")
+                self.destroy_all()
+            
+    def stream_thread(self, stream):
+        self.logger.info(f"Stream thread started ({stream.get_stream_name()})")
+        frame_number = 0
+        while self.keep_going:
+            try:
+                frame_np, cam_buffer = stream.video_feeder.get_next_frame()
+                
+                if frame_np is None:
+                    self.logger.warning("None frame")
+                    continue
+
+            
+                # # Show frame
+                if False and stream.stream_params.show_frames_cv2 and frame_np is not None:
+                    cv2.imshow(stream.get_stream_name(), frame_np)
+
+                # Save frame
+                if stream.stream_params.save_frames:
+                    cv2.imwrite(os.path.join(stream.recordings_full_path, f"{frame_number}.tiff"), frame_np)
+                    #self.logger.info(os.path.join(stream.recordings_full_path, f"{frame_number}.tiff"))
+
+                # Send frames
+                if stream.gst_sender is not None:
+                    stream.gst_sender.send_frame(frame_np)
+            
+                # Release cam_buffer
+                if cam_buffer:
+                    stream.video_feeder.release_cam_buffer(cam_buffer)
+            
+                # Print FPS
+                stream.frame_count_fps += 1
+                stream.frame_count_tot += 1
+                now = time.time()
+                elapsed_time = now-stream.start_time
+                if elapsed_time >= 3.0:
+                    stream.last_fps = stream.frame_count_fps / elapsed_time
+                    self.logger.info(f"FPS: {stream.last_fps:.2f} Hz  ({stream.get_stream_name()})")
+                    # Reset FPS counter
+                    stream.start_time = now
+                    stream.frame_count_fps = 0
+                
+                if False:
+                    # cv2 window key
+                    key = cv2.waitKey(1)&0xff
+                    if key == ord('q'):
+                        self.destroy_all()
+                        break
+
+                frame_number+=1
                 
             except KeyboardInterrupt:
                 self.logger.info("Interrupted by Ctrl+C")
@@ -291,7 +310,7 @@ class Grabber():
             
             except Exception:
                 traceback.print_exc()
-                self.logger.info(f'Exception on frame {self.streams.list[0].frame_count_tot}')
+                self.logger.info(f'Exception on frame {stream.frame_count_tot}')
     
     def handle_command(self, item):
         self.logger.info(f">> Handle {type(item)}") # Server
@@ -300,8 +319,8 @@ class Grabber():
         self.logger.info(f"TODO: Change fps to {new_fps}")
 
     def destroy_all(self):
-        
         self.logger.info("Stop the messages receiver thread")
+        self.keep_going = False
         try:
             if self.communicator is not None:
                 self.communicator.stop_receiver_thread()
@@ -380,5 +399,5 @@ if __name__ == "__main__":
 
     # Start grabber
     grabber = Grabber(logger, proj_path)
-    grabber.main_loop()
+    grabber.start_loops()
     logger.info("Bye!")
