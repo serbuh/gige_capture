@@ -4,21 +4,25 @@ gi.require_version('Gst', '1.0')
 from gi.repository import Gst
 
 class GstSender:
-    def __init__(self, logger, gst_destination, send_fps, show_frames_gst, send_not_show, from_testvideo):
+    def __init__(self, logger, gst_destination, send_fps, show_frames_gst, send_frames_gst, from_testvideo):
         self.logger = logger
         self.host = gst_destination[0]
         self.port = gst_destination[1]
         self.send_fps = send_fps
-        self.send_not_show = send_not_show
+        self.send_frames_gst = send_frames_gst
         self.show_frames_gst = show_frames_gst
         self.from_testvideo = from_testvideo
 
         self.pipeline_video_read() # Create the video read part of the pipeline
         
-        if self.send_not_show:
-            self.create_send_pipeline()
-        else:
+        self.pipeline_splitter()
+
+        if self.show_frames_gst:
             self.create_show_pipeline()
+        if self.send_frames_gst:
+            self.create_send_pipeline()
+        
+            
         
         # start playing
         ret = self.pipeline.set_state(Gst.State.PLAYING)
@@ -70,11 +74,14 @@ class GstSender:
 
         self.add_element_and_link("capsfilter", "capsfilter", link_to="source") # Create capsfilter
         self.pipeline.get_by_name('capsfilter').set_property('caps', Gst.Caps.from_string(f'video/x-raw,format=(string)BGR,width=640,height=480,framerate={int(self.send_fps)}/1'))
-        self.add_element_and_link("videoconvert", "videoconvert1", link_to="capsfilter") # Create videoconvert
+        self.add_element_and_link("videoconvert", "videoconvert_after_read", link_to="capsfilter") # Create videoconvert
 
+    def pipeline_splitter(self):
+        self.add_element_and_link("tee", "splitter", link_to="videoconvert_after_read") # Create splitter
 
     def create_send_pipeline(self):
-        self.add_element_and_link("capsfilter", "capsfilter2", link_to="videoconvert1") # Create capsfilter2
+        self.add_element_and_link("queue", "send_video_queue", link_to="splitter") # Create queue
+        self.add_element_and_link("capsfilter", "capsfilter2", link_to="send_video_queue") # Create capsfilter2
         self.pipeline.get_by_name('capsfilter2').set_property('caps', Gst.Caps.from_string(f'video/x-raw,format=(string)I420,width=640,height=480,framerate={int(self.send_fps)}/1'))
         self.add_element_and_link("queue", "queue", link_to="capsfilter2") # Create queue
         self.add_element_and_link("x265enc", "x265enc", link_to="queue") # Create x265enc
@@ -89,8 +96,8 @@ class GstSender:
         self.pipeline.get_by_name("udpsink").set_property('port', self.port)
 
     def create_show_pipeline(self):
-
-        self.add_element_and_link("autovideosink", "sink", link_to="videoconvert1") # Create autovideosink
+        self.add_element_and_link("queue", "show_video_queue", link_to="splitter") # Create queue
+        self.add_element_and_link("autovideosink", "sink", link_to="show_video_queue") # Create autovideosink
 
 
     def send_frame(self, frame_np):

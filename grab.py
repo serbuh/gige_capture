@@ -71,13 +71,12 @@ class Configurator():
         class CamConfig():
             def __init__(self, cam_config_section, file_dir):
                 self.ip                  = cam_config_section['ip']
-                self.show_frames_cv2     = cam_config_section['show_frames_cv2']
                 self.show_frames_gst     = cam_config_section['show_frames_gst']
                 self.save_frames         = cam_config_section['save_frames']
                 self.recordings_basedir  = os.path.join(file_dir, cam_config_section['recordings_dir'])
                 self.enable_gst          = cam_config_section['enable_gst']
                 self.gst_destination     = (str(cam_config_section['gst_destination_ip']), int(cam_config_section['gst_destination_port']))
-                self.send_not_show       = cam_config_section['send_not_show']
+                self.send_frames_gst       = cam_config_section['send_frames_gst']
 
         # Cam 1
         self.cam_first = CamConfig(self.config['Cams']['first'], self.file_dir)
@@ -133,8 +132,9 @@ class Streams():
         
         for stream in self.get_streams():
             # Show frames with cv2
-            if False and stream.stream_params.show_frames_cv2:
-                cv2.namedWindow(stream.get_stream_name(), cv2.WINDOW_AUTOSIZE)
+            # NOTE: Deprecated
+            # if False and stream.stream_params.show_frames_cv2:
+            #     cv2.namedWindow(stream.get_stream_name(), cv2.WINDOW_AUTOSIZE)
 
             # Prepare save folder
             if stream.stream_params.save_frames and stream.stream_params.recordings_basedir is not None:
@@ -145,7 +145,7 @@ class Streams():
 
             # Send frames options
             if stream.stream_params.enable_gst:
-                stream.gst_sender = GstSender(self.logger, stream.stream_params.gst_destination, stream.cam_config.send_fps, stream.stream_params.show_frames_gst, stream.stream_params.send_not_show, from_testvideo=False)
+                stream.gst_sender = GstSender(self.logger, stream.stream_params.gst_destination, stream.cam_config.send_fps, stream.stream_params.show_frames_gst, stream.stream_params.send_frames_gst, from_testvideo=False)
             else:
                 stream.gst_sender = None
     
@@ -264,10 +264,10 @@ class Grabber():
                     self.logger.warning("None frame")
                     continue
 
-            
-                # # Show frame
-                if False and stream.stream_params.show_frames_cv2 and frame_np is not None:
-                    cv2.imshow(stream.get_stream_name(), frame_np)
+                # Show frame with cv2
+                # NOTE: Deprecated
+                # if False and stream.stream_params.show_frames_cv2 and frame_np is not None:
+                #     cv2.imshow(stream.get_stream_name(), frame_np)
 
                 # Save frame
                 if stream.stream_params.save_frames:

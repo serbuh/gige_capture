@@ -17,11 +17,10 @@
         enable_gst = true
         gst_destination_ip = "127.0.0.1"        # "192.168.132.60"
         gst_destination_port = 5000             # 5000
-        show_frames_cv2 = false
-        show_frames_gst = true
         save_frames = false
         recordings_dir = "recordings_first"
-        send_not_show = false
+        send_frames_gst = true
+        show_frames_gst = true
     
     [Cams.second]
         #ip = "192.168.132.211" # Bolo
@@ -29,11 +28,10 @@
         enable_gst = true
         gst_destination_ip = "127.0.0.1"        # "192.168.132.60"
         gst_destination_port = 5001             # 5001
-        show_frames_cv2 = false
-        show_frames_gst = true
         save_frames = false
         recordings_dir = "recordings_second"
-        send_not_show = false
+        send_frames_gst = true
+        show_frames_gst = true
 
 ["Artificial"]
     pixel_format = "PIXEL_FORMAT_BAYER_GR_8"  # PIXEL_FORMAT_RGB_8_PACKED # PIXEL_FORMAT_YUV_422_PACKED # PIXEL_FORMAT_YUV_422_YUYV_PACKED
