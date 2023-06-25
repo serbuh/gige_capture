@@ -7,8 +7,6 @@
     gst_destination_port = 1212             # 5000
     
 [Grabber]
-    save_frames = false
-    recordings_dir = "recordings"
     enable_gst = true
     send_not_show = true
     enable_messages_interface = true
@@ -21,11 +19,15 @@
     [Cams.first]
         ip = "192.168.132.210" # Near IR
         show_frames_cv2 = true
+        save_frames = true
+        recordings_dir = "recordings_first"
     
     [Cams.second]
         #ip = "192.168.132.211" # Bolo
         ip = "Artificial" # Bolo
         show_frames_cv2 = true
+        save_frames = true
+        recordings_dir = "recordings_second"
 
 ["Artificial"]
     pixel_format = "PIXEL_FORMAT_BAYER_GR_8"  # PIXEL_FORMAT_RGB_8_PACKED # PIXEL_FORMAT_YUV_422_PACKED # PIXEL_FORMAT_YUV_422_YUYV_PACKED
