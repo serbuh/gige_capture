@@ -51,25 +51,19 @@ sleep 0.1s
 echo "Create new tmux session ($tmux_session_name)"
 tmux new -d -s $tmux_session_name
 
-# Run first cam grabber
+# Run server
 run_cmd='python grab.py'
 tmux new-window -n main -t $tmux_session_name $run_cmd
 tmux set-option -w -t 0 remain-on-exit on
 
-# Run second cam grabber
-run_cmd='htop'
-tmux split-window -h -t $tmux_session_name $run_cmd
-
 if $run_client; then
   # Run client
   run_cmd='python client/client.py'
-  tmux new-window -n client -t $tmux_session_name $run_cmd
+  tmux split-window -t $tmux_session_name $run_cmd
 
-  # Return to server's window
-  tmux select-window -t 1
+  # Return to server's pane
+  tmux select-pane -t 0
 fi
-
-
 
 # Attach
 tmux a
