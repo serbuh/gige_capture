@@ -84,14 +84,25 @@ class ArvCamera(VideoFeeder):
         
         self.logger.info(f"ROI           : {width}x{height} at {offset_x},{offset_y}")
         
-        # Set Pixel format and rate
+        # Set frame rate
         try:
-            #self.arv_camera.set_frame_rate(fps) # TODO set frame rate if not nan
+            if self.cam_config.grab_fps >= 0:
+                self.logger.info(f"Set frame rate to {self.cam_config.grab_fps}")
+                self.arv_camera.set_frame_rate(self.cam_config.grab_fps)
+            else:
+                self.logger.info("Frame rate is untouched")
+            
+        except gi.repository.GLib.Error as e:
+            self.logger.error(f"{e}\nCould not set frame rate")
+            return False, None
+
+        # Set Pixel format
+        try:
             pixel_format_arv = getattr(Aravis, self.cam_config.pixel_format_str)
             self.arv_camera.set_pixel_format(pixel_format_arv)
             
         except gi.repository.GLib.Error as e:
-            self.logger.error(f"{e}\nCould not set frame rate / pixel format params.")
+            self.logger.error(f"{e}\nCould not set pixel format {self.cam_config.pixel_format_str}")
             return False, None
         
         pixel_format_string = self.arv_camera.get_pixel_format_as_string()

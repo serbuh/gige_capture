@@ -62,7 +62,7 @@
     height   = 480
     scale_x  = 1
     scale_y  = 1
-    grab_fps = nan
+    grab_fps = -1
     send_fps = 25
 
 ["Blackfly BFLY-PGE-20E4C"]
