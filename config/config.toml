@@ -14,6 +14,7 @@
     show_frames_cv2 = true
     enable_messages_interface = true
     send_status = true
+    print_messages = false
 
 [Cams]
     cam_1_ip = "192.168.132.210" # Near IR

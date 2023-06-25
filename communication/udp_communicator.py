@@ -9,8 +9,9 @@ from communication.udp_imp import UDP
 from ICD import cv_structs
 
 class Communicator():
-    def __init__(self, logger, receive_channel, send_channel, handle_ctypes_msg_callback):
+    def __init__(self, logger, print_messages, receive_channel, send_channel, handle_ctypes_msg_callback):
         self.logger = logger
+        self.print_messages = print_messages
         self.handle_ctypes_msg_callback = handle_ctypes_msg_callback
         self.logger.info("Init Communicator")
 
@@ -50,7 +51,7 @@ class Communicator():
     
     def send_ctypes_msg(self, ctypes_msg):
         # Serialize ctypes
-        if True:
+        if self.print_messages:
             self.logger.debug(f"Sending:\n{ctypes_msg}")
         msg_serialized = self.serialize_ctypes(ctypes_msg)
         self.UDP_conn.send(msg_serialized) # Send status

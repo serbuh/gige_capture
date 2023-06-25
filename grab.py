@@ -75,13 +75,14 @@ class Configurator():
         self.cam2 = None
         
         # Grabber
-        self.save_frames = self.config['Grabber']['save_frames']
-        self.recordings_basedir = os.path.join(self.file_dir, self.config['Grabber']['recordings_dir'])
-        self.enable_gst = self.config['Grabber']['enable_gst']
-        self.send_not_show = self.config['Grabber']['send_not_show']
-        self.show_frames_cv2 = self.config['Grabber']['show_frames_cv2']
+        self.save_frames               = self.config['Grabber']['save_frames']
+        self.recordings_basedir        = os.path.join(self.file_dir, self.config['Grabber']['recordings_dir'])
+        self.enable_gst                = self.config['Grabber']['enable_gst']
+        self.send_not_show             = self.config['Grabber']['send_not_show']
+        self.show_frames_cv2           = self.config['Grabber']['show_frames_cv2']
         self.enable_messages_interface = self.config['Grabber']['enable_messages_interface']
-        self.send_status = self.config['Grabber']['send_status']
+        self.send_status               = self.config['Grabber']['send_status']
+        self.print_messages            = self.config['Grabber']['print_messages']
 
         # Com
         self.gst_destination      = (str(self.config['Com']['gst_destination_ip']), int(self.config['Com']['gst_destination_port']))
@@ -182,7 +183,7 @@ class Grabber():
         
         # UDP ctypes messages interface
         if self.config.enable_messages_interface:
-            self.communicator = Communicator(self.logger, self.config.receive_cmds_channel, self.config.send_reports_channel, self.handle_ctypes_msg_callback)
+            self.communicator = Communicator(self.logger, self.config.print_messages, self.config.receive_cmds_channel, self.config.send_reports_channel, self.handle_ctypes_msg_callback)
             self.new_messages_queue = queue.Queue()
             self.communicator.set_receive_queue(self.new_messages_queue)
             self.communicator.register_callback("change_fps", self.change_fps)
