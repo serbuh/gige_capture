@@ -73,6 +73,9 @@ class Configurator():
                 self.show_frames_cv2     = cam_config_section['show_frames_cv2']
                 self.save_frames         = cam_config_section['save_frames']
                 self.recordings_basedir  = os.path.join(file_dir, cam_config_section['recordings_dir'])
+                self.enable_gst          = cam_config_section['enable_gst']
+                self.gst_destination     = (str(cam_config_section['gst_destination_ip']), int(cam_config_section['gst_destination_port']))
+                self.send_not_show       = cam_config_section['send_not_show']
 
         # Cam 1
         self.cam_first = CamConfig(self.config['Cams']['first'], self.file_dir)
@@ -81,14 +84,11 @@ class Configurator():
         self.cam_second = CamConfig(self.config['Cams']['second'], self.file_dir)
         
         # Grabber
-        self.enable_gst                = self.config['Grabber']['enable_gst']
-        self.send_not_show             = self.config['Grabber']['send_not_show']
         self.enable_messages_interface = self.config['Grabber']['enable_messages_interface']
         self.send_status               = self.config['Grabber']['send_status']
         self.print_messages            = self.config['Grabber']['print_messages']
 
         # Com
-        self.gst_destination      = (str(self.config['Com']['gst_destination_ip']), int(self.config['Com']['gst_destination_port']))
         self.receive_cmds_channel = (str(self.config['Com']['receive_cmds_ip']), int(self.config['Com']['receive_cmds_port']))
         self.send_reports_channel = (str(self.config['Com']['send_reports_ip']), int(self.config['Com']['send_reports_port']))
     
@@ -99,7 +99,7 @@ class Configurator():
             exit()
         else:
             self.logger.info(f"\n> {cam_model} <\n{pprint.pformat(cam_config_dict, indent=4, sort_dicts=False)}\n")
-            cam_params = CamParams(
+            stream_params = CamParams(
                 pixel_format_str = cam_config_dict["pixel_format"],
                 offset_x = int(cam_config_dict["offset_x"]),
                 offset_y = int(cam_config_dict["offset_y"]),
@@ -110,7 +110,7 @@ class Configurator():
                 grab_fps = int(cam_config_dict["grab_fps"]),
                 send_fps = int(cam_config_dict["send_fps"]),
             )
-        return cam_params
+        return stream_params
 
 class Streams():
     def __init__(self, logger, config):
@@ -131,27 +131,34 @@ class Streams():
         
         for stream in self.get_streams():
             # Show frames with cv2
-            if stream.cam_params.show_frames_cv2:
+            if stream.stream_params.show_frames_cv2:
                 cv2.namedWindow(stream.get_stream_name(), cv2.WINDOW_AUTOSIZE)
 
             # Prepare save folder
-            if stream.cam_params.save_frames and stream.cam_params.recordings_basedir is not None:
+            if stream.stream_params.save_frames and stream.stream_params.recordings_basedir is not None:
                 now = datetime.datetime.now().strftime("%y_%m_%d__%H_%M_%S")
-                stream.recordings_full_path = os.path.join(stream.cam_params.recordings_basedir, now)
+                stream.recordings_full_path = os.path.join(stream.stream_params.recordings_basedir, now)
                 pathlib.Path(stream.recordings_full_path).mkdir(parents=True, exist_ok=True) # Ensure dir existense
                 self.logger.info(f"Saving frames to:\n{stream.recordings_full_path}")
+
+            # Send frames options
+            if stream.stream_params.enable_gst:
+                stream.gst_sender = GstSender(self.logger, stream.stream_params.gst_destination, stream.cam_config.send_fps, stream.stream_params.send_not_show, from_testvideo=False)
+            else:
+                stream.gst_sender = None
     
     def get_streams(self):
         return self.list
 
 class Stream():
-    def __init__(self, logger, config, cam_params):
+    def __init__(self, logger, config, stream_params):
         self.logger = logger
         self.config = config
-        self.cam_params = cam_params
+        self.stream_params = stream_params
         self.recordings_full_path = None
+        self.gst_sender = None
         
-        self.logger.info(f"   Init stream   {self.cam_params.ip}   ".center(70, "#"))
+        self.logger.info(f"   Init stream   {self.stream_params.ip}   ".center(70, "#"))
 
         # Init FPS variables
         self.frame_count_tot = 0
@@ -160,14 +167,14 @@ class Stream():
         self.start_time = time.time()
 
         # Init grabber
-        self.initialized = self.init_grabber(self.cam_params.ip)
+        self.initialized = self.init_grabber(self.stream_params.ip)
         self.artificial = self.video_feeder.is_artificial()
         if self.initialized:
             result_str = "INITIALIZED"
         else:
             result_str = "FAILED to initialized"
         
-        self.logger.info(f"   Stream   {self.cam_params.ip}   {result_str}   ".center(70, "#"))
+        self.logger.info(f"   Stream   {self.stream_params.ip}   {result_str}   ".center(70, "#"))
 
     def init_grabber(self, ip):
         
@@ -201,12 +208,6 @@ class Grabber():
 
         # Init streams
         self.streams = Streams(logger, self.config)
-                
-        # Send frames options
-        if self.config.enable_gst:
-            self.gst_sender = GstSender(self.logger, self.config.gst_destination, self.streams.list[0].cam_config.send_fps, self.config.send_not_show, from_testvideo=False)
-        else:
-            self.gst_sender = None
         
         # UDP ctypes messages interface
         if self.config.enable_messages_interface:
@@ -222,7 +223,7 @@ class Grabber():
     def main_loop(self):
         
         for stream in self.streams.list:
-            self.logger.info(f"Starting loop for stream {stream.cam_params.ip}")
+            self.logger.info(f"Starting loop for stream {stream.stream_params.ip}")
 
         frame_number = 0
         while True:
@@ -235,16 +236,17 @@ class Grabber():
 
                 for stream in self.streams.get_streams():
                     # Show frame
-                    if stream.cam_params.show_frames_cv2 and frame_np is not None:
+                    if stream.stream_params.show_frames_cv2 and frame_np is not None:
                         cv2.imshow(stream.get_stream_name(), frame_np)
 
                     # Save frame
-                    if stream.cam_params.save_frames:
+                    if stream.stream_params.save_frames:
                         cv2.imwrite(os.path.join(stream.recordings_full_path, f"{frame_number}.tiff"), frame_np)
                         #self.logger.info(os.path.join(stream.recordings_full_path, f"{frame_number}.tiff"))
-                
-                if self.gst_sender is not None:
-                    self.gst_sender.send_frame(frame_np)
+
+                    # Send frames
+                    if stream.gst_sender is not None:
+                        stream.gst_sender.send_frame(frame_np)
                 
                 # Release cam_buffer
                 if cam_buffer:
