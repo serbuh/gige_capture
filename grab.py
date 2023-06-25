@@ -157,7 +157,7 @@ class Stream():
         self.stream_params = stream_params
         self.recordings_full_path = None
         self.gst_sender = None
-        
+
         self.logger.info(f"   Init stream   {self.stream_params.ip}   ".center(70, "#"))
 
         # Init FPS variables
@@ -248,21 +248,21 @@ class Grabber():
                     if stream.gst_sender is not None:
                         stream.gst_sender.send_frame(frame_np)
                 
-                # Release cam_buffer
-                if cam_buffer:
-                    self.streams.list[0].video_feeder.release_cam_buffer(cam_buffer)
+                    # Release cam_buffer
+                    if cam_buffer:
+                        stream.video_feeder.release_cam_buffer(cam_buffer)
                 
-                # Print FPS
-                self.streams.list[0].frame_count_fps += 1
-                self.streams.list[0].frame_count_tot += 1
-                now = time.time()
-                elapsed_time = now-self.streams.list[0].start_time
-                if elapsed_time >= 3.0:
-                    self.streams.list[0].last_fps = self.streams.list[0].frame_count_fps / elapsed_time
-                    self.logger.info(f"FPS: {self.streams.list[0].last_fps}")
-                    # Reset FPS counter
-                    self.streams.list[0].start_time = now
-                    self.streams.list[0].frame_count_fps = 0
+                    # Print FPS
+                    stream.frame_count_fps += 1
+                    stream.frame_count_tot += 1
+                    now = time.time()
+                    elapsed_time = now-stream.start_time
+                    if elapsed_time >= 3.0:
+                        stream.last_fps = stream.frame_count_fps / elapsed_time
+                        self.logger.info(f"FPS: {stream.last_fps:.2f} Hz  ({stream.get_stream_name()})")
+                        # Reset FPS counter
+                        stream.start_time = now
+                        stream.frame_count_fps = 0
                 
                 # cv2 window key
                 key = cv2.waitKey(1)&0xff
@@ -311,16 +311,18 @@ class Grabber():
 
         self.logger.info("Stop the camera grabbing")
         try:
-            if not self.streams.list[0].artificial:
-                self.streams.list[0].video_feeder.stop_acquisition()
+            for stream in self.streams.get_streams():
+                if not stream.artificial:
+                    stream.video_feeder.stop_acquisition()
         except:
             traceback.print_exc()
             self.logger.info("Exception during closing camera grabbing")
         
         self.logger.info("Stop the gstreamer")
         try:
-            if self.gst_sender is not None:
-                self.gst_sender.destroy()
+            for stream in self.streams.get_streams():
+                if stream.gst_sender is not None:
+                    stream.gst_sender.destroy()
         except:
             traceback.print_exc()
             self.logger.info("Exception during closing gstreamer")
