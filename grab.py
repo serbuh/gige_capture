@@ -109,6 +109,18 @@ class Configurator():
             )
         return cam_params
 
+class Streams():
+    def __init__(self, logger, config):
+        self.logger = logger
+        self.config = config
+
+        self.list = [Stream(logger, self.config, self.config.cam_1_ip), Stream(logger, self.config, self.config.cam_2_ip)]
+        stream_names = [x.video_feeder.get_cam_model() for x in self.list]
+        init_status = ["OK" if x.initialized else "BAD" for x in self.list]
+        res_str = "\n"
+        for name_status in zip(stream_names, init_status):
+            res_str += f"{name_status[0]:30}: {name_status[1]}\n"
+        self.logger.info(res_str)
 
 class Stream():
     def __init__(self, logger, config, ip):
@@ -162,13 +174,7 @@ class Grabber():
         self.active_camera = self.config.active_camera
 
         # Init streams
-        self.streams = [Stream(logger, self.config, self.config.cam_1_ip), Stream(logger, self.config, self.config.cam_2_ip)]
-        stream_names = [x.video_feeder.get_cam_model() for x in self.streams]
-        init_status = ["OK" if x.initialized else "BAD" for x in self.streams]
-        res_str = "\n"
-        for name_status in zip(stream_names, init_status):
-            res_str += f"{name_status[0]:30}: {name_status[1]}\n"
-        self.logger.info(res_str)
+        self.streams = Streams(logger, self.config)
         
         # Show frames options
         if self.config.show_frames_cv2:
@@ -184,7 +190,7 @@ class Grabber():
 
         # Send frames options
         if self.config.enable_gst:
-            self.gst_sender = GstSender(self.logger, self.config.gst_destination, self.streams[0].cam_config.send_fps, self.config.send_not_show, from_testvideo=False)
+            self.gst_sender = GstSender(self.logger, self.config.gst_destination, self.streams.list[0].cam_config.send_fps, self.config.send_not_show, from_testvideo=False)
         else:
             self.gst_sender = None
         
@@ -201,13 +207,13 @@ class Grabber():
 
     def main_loop(self):
         
-        for stream in self.streams:
+        for stream in self.streams.list:
             self.logger.info(f"Starting loop for stream {stream.ip}")
 
         frame_number = 0
         while True:
             try:
-                frame_np, cam_buffer = self.streams[0].video_feeder.get_next_frame()
+                frame_np, cam_buffer = self.streams.list[0].video_feeder.get_next_frame()
                 
                 if frame_np is None:
                     self.logger.warning("None frame")
@@ -226,19 +232,19 @@ class Grabber():
                 
                 # Release cam_buffer
                 if cam_buffer:
-                    self.streams[0].video_feeder.release_cam_buffer(cam_buffer)
+                    self.streams.list[0].video_feeder.release_cam_buffer(cam_buffer)
                 
                 # Print FPS
-                self.streams[0].frame_count_fps += 1
-                self.streams[0].frame_count_tot += 1
+                self.streams.list[0].frame_count_fps += 1
+                self.streams.list[0].frame_count_tot += 1
                 now = time.time()
-                elapsed_time = now-self.streams[0].start_time
+                elapsed_time = now-self.streams.list[0].start_time
                 if elapsed_time >= 3.0:
-                    self.streams[0].last_fps = self.streams[0].frame_count_fps / elapsed_time
-                    self.logger.info(f"FPS: {self.streams[0].last_fps}")
+                    self.streams.list[0].last_fps = self.streams.list[0].frame_count_fps / elapsed_time
+                    self.logger.info(f"FPS: {self.streams.list[0].last_fps}")
                     # Reset FPS counter
-                    self.streams[0].start_time = now
-                    self.streams[0].frame_count_fps = 0
+                    self.streams.list[0].start_time = now
+                    self.streams.list[0].frame_count_fps = 0
                 
                 # cv2 window key
                 key = cv2.waitKey(1)&0xff
@@ -252,7 +258,7 @@ class Grabber():
                 if self.config.enable_messages_interface:
                     # Send status
                     if self.config.send_status:
-                        status_msg = cv_structs.create_status(frame_number, frame_number, int(self.streams[0].last_fps), int(self.streams[0].last_fps), bitrateKBs_1=10, bitrateKBs_2=10, active_camera=self.active_camera) # Create ctypes status
+                        status_msg = cv_structs.create_status(frame_number, frame_number, int(self.streams.list[0].last_fps), int(self.streams.list[0].last_fps), bitrateKBs_1=10, bitrateKBs_2=10, active_camera=self.active_camera) # Create ctypes status
                         self.communicator.send_ctypes_msg(status_msg) # Send status
                     
                     # Read receive queue
@@ -267,7 +273,7 @@ class Grabber():
             
             except Exception:
                 traceback.print_exc()
-                self.logger.info(f'Exception on frame {self.streams[0].frame_count_tot}')
+                self.logger.info(f'Exception on frame {self.streams.list[0].frame_count_tot}')
     
     def handle_command(self, item):
         self.logger.info(f">> Handle {type(item)}") # Server
@@ -287,8 +293,8 @@ class Grabber():
 
         self.logger.info("Stop the camera grabbing")
         try:
-            if not self.streams[0].artificial:
-                self.streams[0].video_feeder.stop_acquisition()
+            if not self.streams.list[0].artificial:
+                self.streams.list[0].video_feeder.stop_acquisition()
         except:
             traceback.print_exc()
             self.logger.info("Exception during closing camera grabbing")
