@@ -65,21 +65,24 @@ class Configurator():
         except Exception as e:
             self.logger.error(f"{e}\nFailed to get active_camera from toml")
             exit()
-        
+
+        # Config cams
+        class CamConfig():
+            def __init__(self, cam_config_section):
+                self.ip = cam_config_section['ip']
+                self.show_frames_cv2 = cam_config_section['show_frames_cv2']
+
         # Cam 1
-        self.cam_1_ip = self.config['Cams']['cam_1_ip']
-        self.cam1 = None
+        self.cam_first = CamConfig(self.config['Cams']['first'])
 
         # Cam 2
-        self.cam_2_ip = self.config['Cams']['cam_2_ip']
-        self.cam2 = None
+        self.cam_second = CamConfig(self.config['Cams']['second'])
         
         # Grabber
         self.save_frames               = self.config['Grabber']['save_frames']
         self.recordings_basedir        = os.path.join(self.file_dir, self.config['Grabber']['recordings_dir'])
         self.enable_gst                = self.config['Grabber']['enable_gst']
         self.send_not_show             = self.config['Grabber']['send_not_show']
-        self.show_frames_cv2           = self.config['Grabber']['show_frames_cv2']
         self.enable_messages_interface = self.config['Grabber']['enable_messages_interface']
         self.send_status               = self.config['Grabber']['send_status']
         self.print_messages            = self.config['Grabber']['print_messages']
@@ -114,21 +117,34 @@ class Streams():
         self.logger = logger
         self.config = config
 
-        self.list = [Stream(logger, self.config, self.config.cam_1_ip), Stream(logger, self.config, self.config.cam_2_ip)]
-        stream_names = [x.video_feeder.get_cam_model() for x in self.list]
+        # Init streams
+        self.list = [Stream(logger, self.config, self.config.cam_first), Stream(logger, self.config, self.config.cam_second)]
+        
+        # Print streams status
+        stream_names = [x.get_stream_name() for x in self.list]
         init_status = ["OK" if x.initialized else "BAD" for x in self.list]
         res_str = "\n"
         for name_status in zip(stream_names, init_status):
             res_str += f"{name_status[0]:30}: {name_status[1]}\n"
         self.logger.info(res_str)
 
+        # Show frames with cv2
+        for stream in self.get_streams():
+            if stream.show_frames_cv2:
+                cv2.namedWindow(stream.get_stream_name(), cv2.WINDOW_AUTOSIZE)
+    
+    def get_streams(self):
+        return self.list
+
 class Stream():
-    def __init__(self, logger, config, ip):
+    def __init__(self, logger, config, cam_config):
         self.logger = logger
         self.config = config
-        self.ip = ip
+        self.ip = cam_config.ip
+        self.show_frames_cv2 = cam_config.show_frames_cv2
+        self.window_name = ""
         
-        self.logger.info(f"   Init stream   {ip}   ".center(70, "#"))
+        self.logger.info(f"   Init stream   {self.ip}   ".center(70, "#"))
 
         # Init FPS variables
         self.frame_count_tot = 0
@@ -137,13 +153,13 @@ class Stream():
         self.start_time = time.time()
 
         # Init grabber
-        self.initialized = self.init_grabber(ip)
+        self.initialized = self.init_grabber(self.ip)
         self.artificial = self.video_feeder.is_artificial()
         if self.initialized:
             result_str = "INITIALIZED"
         else:
             result_str = "FAILED to initialized"
-        self.logger.info(f"   Stream   {ip}   {result_str}   ".center(70, "#"))
+        self.logger.info(f"   Stream   {self.ip}   {result_str}   ".center(70, "#"))
 
     def init_grabber(self, ip):
         
@@ -164,7 +180,9 @@ class Stream():
             
             return initialized
     
-
+    def get_stream_name(self):
+        return self.video_feeder.cam_model
+    
 class Grabber():
     def __init__(self, logger, proj_path):
         self.logger = logger
@@ -175,12 +193,7 @@ class Grabber():
 
         # Init streams
         self.streams = Streams(logger, self.config)
-        
-        # Show frames options
-        if self.config.show_frames_cv2:
-            self.window_name = "Frames"
-            cv2.namedWindow(self.window_name, cv2.WINDOW_AUTOSIZE)
-        
+                
         # Prepare save folder
         if self.config.save_frames and self.config.recordings_basedir is not None:
             now = datetime.datetime.now().strftime("%y_%m_%d__%H_%M_%S")
@@ -220,8 +233,9 @@ class Grabber():
                     continue
 
                 # Show frame
-                if self.config.show_frames_cv2 and frame_np is not None:
-                    cv2.imshow(self.window_name, frame_np)
+                for stream in self.streams.get_streams():
+                    if stream.show_frames_cv2 and frame_np is not None:
+                        cv2.imshow(stream.get_stream_name(), frame_np)
 
                 if self.config.save_frames:
                     cv2.imwrite(os.path.join(self.recordings_full_path, f"{frame_number}.tiff"), frame_np)

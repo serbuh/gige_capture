@@ -11,16 +11,21 @@
     recordings_dir = "recordings"
     enable_gst = true
     send_not_show = true
-    show_frames_cv2 = true
     enable_messages_interface = true
     send_status = true
     print_messages = false
 
 [Cams]
-    cam_1_ip = "192.168.132.210" # Near IR
-    #cam_2_ip = "192.168.132.211" # Bolo
-    cam_2_ip = "Artificial" # Bolo
     active_camera = "camera1"
+
+    [Cams.first]
+        ip = "192.168.132.210" # Near IR
+        show_frames_cv2 = true
+    
+    [Cams.second]
+        #ip = "192.168.132.211" # Bolo
+        ip = "Artificial" # Bolo
+        show_frames_cv2 = true
 
 ["Artificial"]
     pixel_format = "PIXEL_FORMAT_BAYER_GR_8"  # PIXEL_FORMAT_RGB_8_PACKED # PIXEL_FORMAT_YUV_422_PACKED # PIXEL_FORMAT_YUV_422_YUYV_PACKED
