@@ -155,4 +155,7 @@ class ArvCamera(VideoFeeder):
         return frame_np, cam_buffer
     
     def stop_acquisition(self):
-        self.arv_camera.stop_acquisition()
+        try:
+            self.arv_camera.stop_acquisition()
+        except Exception as e:
+            self.logger.error(f"Could not stop acquisition: {e}")
