@@ -27,13 +27,13 @@ import traceback
 import tomli
 import pprint
 import threading
+import argparse
 
 from gst_handler import GstSender
 from video_feeders.frame_generator import FrameGenerator
 from video_feeders.arv_cam import ArvCamera
 from ICD import cv_structs
 from communication.udp_communicator import Communicator
-
 
 
 class CamParams():
@@ -206,8 +206,9 @@ class Stream():
         return self.stream_name
     
 class Grabber():
-    def __init__(self, logger, proj_path):
+    def __init__(self, logger, proj_path, stream_index):
         self.logger = logger
+        self.stream_index = stream_index
         self.keep_going = True
         self.config = Configurator(logger, proj_path)
         
@@ -404,7 +405,13 @@ if __name__ == "__main__":
     # Project path
     proj_path=pathlib.Path().resolve()
 
+    # Read args
+    parser = argparse.ArgumentParser()
+    parser.add_argument("stream_index", type=int, help="stream index", choices=[0,1])
+    args = parser.parse_args()
+    logger.info(f"Grabber index {args.stream_index}")
+    
     # Start grabber
-    grabber = Grabber(logger, proj_path)
+    grabber = Grabber(logger, proj_path, args.stream_index)
     grabber.start_loops()
     logger.info("Bye!")

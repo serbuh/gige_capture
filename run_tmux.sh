@@ -52,13 +52,17 @@ echo "Create new tmux session ($tmux_session_name)"
 tmux new -d -s $tmux_session_name
 
 # Run first cam grabber
-run_cmd='python grab.py'
+run_cmd='python grab.py 0'
 tmux new-window -n main -t $tmux_session_name $run_cmd
 tmux set-option -w -t 0 remain-on-exit on
 
 # Run second cam grabber
-run_cmd='htop'
+run_cmd='python grab.py 1'
 tmux split-window -h -t $tmux_session_name $run_cmd
+
+# Run status
+run_cmd='htop'
+tmux split-window -vf -t $tmux_session_name $run_cmd
 
 if $run_client; then
   # Run client
@@ -69,7 +73,7 @@ if $run_client; then
   tmux select-window -t 1
 fi
 
-
+tmux select-pane -t 0
 
 # Attach
 tmux a
