@@ -5,9 +5,9 @@ import threading
 import time
 
 class UDP():
-    def __init__(self, receive_channel, send_channel):
+    def __init__(self, receive_channel, send_channel, send_from_port=None):
         self.bind_recv(receive_channel)
-        self.bind_send(send_channel)
+        self.bind_send(send_channel, send_from_port)
         
     def bind_recv(self, receive_channel):
         self.receive_channel = receive_channel
@@ -16,12 +16,14 @@ class UDP():
         self.recv_sock.bind(receive_channel)
         self.recv_sock.setblocking(0)
     
-    def bind_send(self, send_channel):
+    def bind_send(self, send_channel, send_from_port):
         self.send_channel = send_channel
         self.send_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.send_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.send_sock.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 8388608)
         self.send_sock.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, 8388608)
+        if send_from_port is not None:
+            self.send_sock.bind(('0.0.0.0', send_from_port))
 
     def send(self, msg_serialized):
         #print(f"Sending to {self.send_channel}:\n'{msg_serialized}'")

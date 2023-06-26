@@ -17,8 +17,9 @@ class Client():
         receive_reports_channel = ("127.0.0.1", 5111)
         send_cmds_channel = ("127.0.0.1", 5100)
         print_messages = True
+        send_from_port = None
 
-        self.communicator = Communicator(logger, print_messages, receive_reports_channel, send_cmds_channel, handle_msg)
+        self.communicator = Communicator(logger, print_messages, receive_reports_channel, send_cmds_channel, send_from_port, handle_msg)
         self.communicator.start_receiver_thread() # Start receiver loop
 
     def init_gui(self):

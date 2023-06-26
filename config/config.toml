@@ -1,8 +1,9 @@
 [Com]
-    receive_cmds_ip = "127.0.0.1"           # "192.168.132.212"
+    receive_cmds_ip = "192.168.132.212"           # "192.168.132.212"
     receive_cmds_port = 5100                # 5100
-    send_reports_ip = "127.0.0.1"           # "192.168.132.60"
-    send_reports_port = 5111                # 5101
+    send_reports_ip = "192.168.132.60"           # "192.168.132.60"
+    send_reports_port = 5101                # 5101
+    send_from_port = 5100
     
 [Grabber]
     enable_messages_interface = true
@@ -15,8 +16,8 @@
     [Cams.first]
         ip = "192.168.132.210" # Artificial / 192.168.132.210
         enable_gst = true
-        gst_destination_ip = "127.0.0.1"        # "192.168.132.60"
-        gst_destination_port = 5000             # 5000
+        gst_destination_ip = "192.168.132.60"        # "192.168.132.60"
+        gst_destination_port = 50010             # 5000
         save_frames = false
         recordings_dir = "recordings_first"
         send_frames_gst = true
@@ -25,8 +26,8 @@
     [Cams.second]
         ip = "192.168.132.211" # Artificial / 192.168.132.211
         enable_gst = true
-        gst_destination_ip = "127.0.0.1"        # "192.168.132.60"
-        gst_destination_port = 5001             # 5001
+        gst_destination_ip = "192.168.132.60"        # "192.168.132.60"
+        gst_destination_port = 50020             # 5001
         save_frames = false
         recordings_dir = "recordings_second"
         send_frames_gst = true
