@@ -52,6 +52,7 @@ while True:
 
     # Get raw buffer
     buf = cam_buffer.get_data()
+    if len(buf) == 0: continue
     
     if pixel_format == Aravis.PIXEL_FORMAT_BAYER_GR_8:
         frame_raw = np.frombuffer(buf, dtype='uint8').reshape((h, w))

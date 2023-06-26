@@ -62,7 +62,7 @@ tmux split-window -h -t $tmux_session_name $run_cmd
 
 # Run status
 run_cmd='htop'
-tmux split-window -vf -t $tmux_session_name $run_cmd
+#tmux split-window -vf -t $tmux_session_name $run_cmd
 
 if $run_client; then
   # Run client
