@@ -89,6 +89,7 @@ class Configurator():
         # Com
         self.receive_cmds_channel = (str(self.config['Com']['receive_cmds_ip']), int(self.config['Com']['receive_cmds_port']))
         self.send_reports_channel = (str(self.config['Com']['send_reports_ip']), int(self.config['Com']['send_reports_port']))
+        self.send_from_port = self.config['Com']['send_from_port']
     
     def get_cam_settings(self, cam_model):
         cam_config_dict = self.config.get(cam_model, None)
@@ -199,7 +200,7 @@ class Grabber():
 
         # UDP ctypes messages interface
         if self.config.enable_messages_interface:
-            self.communicator = Communicator(self.logger, self.config.print_messages, self.config.receive_cmds_channel, self.config.send_reports_channel, self.handle_ctypes_msg_callback)
+            self.communicator = Communicator(self.logger, self.config.print_messages, self.config.receive_cmds_channel, self.config.send_reports_channel, self.config.send_from_port, self.handle_ctypes_msg_callback)
             self.new_messages_queue = queue.Queue()
             self.communicator.set_receive_queue(self.new_messages_queue)
             self.communicator.register_callback("change_fps", self.change_fps)
@@ -339,7 +340,7 @@ class Grabber():
         elif isinstance(msg, cv_structs.client_set_params_msg):
             
             # TODO do things
-            
+            self.logger.info("Sending ack")
             # Create ack
             params_result_msg = cv_structs.create_cv_command_ack(isOk=True)
             # Send Ack
