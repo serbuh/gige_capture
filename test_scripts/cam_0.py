@@ -47,6 +47,7 @@ arv_camera.start_acquisition()
 
 frame_number = 0
 while True:
+    print(frame_number)
     # Get frame
     cam_buffer = arv_stream.pop_buffer()
 
@@ -79,4 +80,5 @@ while True:
         logger.error("Bye")
         arv_camera.stop_acquisition()
         exit()
-        
+    
+    frame_number+=1
