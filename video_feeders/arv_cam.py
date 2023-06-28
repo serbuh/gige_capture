@@ -88,12 +88,19 @@ class ArvCamera(VideoFeeder):
         try:
             if self.cam_config.binning >= 0:
                 self.arv_camera.set_integer("BinningVertical", int(self.cam_config.binning))
-            binning_x, binning_y = self.arv_camera.get_binning()
-            self.logger.info(f"Binning       : {binning_x}, {binning_y}")
+                binning_x, binning_y = self.arv_camera.get_binning()
+                self.logger.info(f"Binning       : {binning_x}, {binning_y}")
         except gi.repository.GLib.Error as e:
             self.logger.error(f"{e}\nCould not set binning")
             return False, None
-                
+        
+        # Remove pattern from pleora
+        try:
+            self.arv_camera.set_string("TestImageSelector", "Off")
+        except gi.repository.GLib.Error as e:
+            self.logger.error(f"{e}\nCould not remove pattern")
+            return False, None
+        
         # Set frame rate
         try:
             if self.cam_config.grab_fps >= 0:

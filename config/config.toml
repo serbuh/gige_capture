@@ -75,7 +75,7 @@
     offset_y = 60
     width    = 640
     height   = 480
-    binning = 1
+    binning = 2
     scale_x  = 1
     scale_y  = 1
     grab_fps = 25
