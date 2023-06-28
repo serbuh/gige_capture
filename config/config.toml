@@ -14,24 +14,24 @@
     active_camera = "camera1"
 
     [Cams.0]
-        ip = "192.168.132.210" # Artificial / 192.168.132.210
+        ip = "192.168.132.215" # Artificial / 192.168.132.210
         enable_gst = true
-        gst_destination_ip = "192.168.132.60"        # "192.168.132.60"
+        gst_destination_ip = "127.0.0.1" #"192.168.132.163"        # "192.168.132.60"
         gst_destination_port = 50010             # 5000
-        save_frames = false
+        save_frames = true
         recordings_dir = "recordings_first"
         send_frames_gst = true
-        show_frames_gst = true
+        show_frames_gst = false
     
     [Cams.1]
         ip = "192.168.132.211" # Artificial / 192.168.132.211
         enable_gst = true
-        gst_destination_ip = "192.168.132.60"        # "192.168.132.60"
+        gst_destination_ip = "127.0.0.1" # "192.168.132.163"        # "192.168.132.60"
         gst_destination_port = 50020             # 5001
         save_frames = false
         recordings_dir = "recordings_second"
         send_frames_gst = true
-        show_frames_gst = true
+        show_frames_gst = false
 
 ["Artificial"]
     pixel_format = "PIXEL_FORMAT_BAYER_GR_8"  # PIXEL_FORMAT_RGB_8_PACKED # PIXEL_FORMAT_YUV_422_PACKED # PIXEL_FORMAT_YUV_422_YUYV_PACKED
@@ -39,6 +39,8 @@
     offset_y = 240  # 0
     width    = 640  # 1280
     height   = 480  # 1024
+    bining_x = 1
+    bining_y = 1
     scale_x  = 1
     scale_y  = 1
     grab_fps = 20
@@ -50,6 +52,8 @@
     offset_y = 240  # 0
     width    = 640  # 1280
     height   = 480  # 1024
+    bining_x = 1
+    bining_y = 1
     scale_x  = 1
     scale_y  = 1
     grab_fps = 20
@@ -61,6 +65,8 @@
     offset_y = 0
     width    = 640
     height   = 480
+    bining_x = 1
+    bining_y = 1
     scale_x  = 1
     scale_y  = 1
     grab_fps = -1
@@ -68,11 +74,13 @@
 
 ["Blackfly BFLY-PGE-20E4C"]
     pixel_format = "PIXEL_FORMAT_MONO_8"
-    offset_x = 320
-    offset_y = 240
+    offset_x = 80
+    offset_y = 60
     width    = 640
     height   = 480
+    bining_x = 2 # BinningHorizontal
+    bining_y = 2 # BinningVertical
     scale_x  = 1
     scale_y  = 1
-    grab_fps = nan
+    grab_fps = 25
     send_fps = 25
