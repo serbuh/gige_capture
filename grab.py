@@ -37,16 +37,17 @@ from communication.udp_communicator import Communicator
 
 
 class CamParams():
-    def __init__(self, pixel_format_str, offset_x, offset_y, width, height, scale_x, scale_y, grab_fps, send_fps):
+    def __init__(self, pixel_format_str, offset_x, offset_y, width, height, binning, scale_x, scale_y, grab_fps, send_fps):
         self.pixel_format_str = pixel_format_str
-        self.offset_x = offset_x
-        self.offset_y = offset_y
-        self.width    = width
-        self.height   = height
-        self.scale_x  = scale_x
-        self.scale_y  = scale_y
-        self.grab_fps = grab_fps
-        self.send_fps = send_fps
+        self.offset_x  = offset_x
+        self.offset_y  = offset_y
+        self.width     = width
+        self.height    = height
+        self.binning = binning
+        self.scale_x   = scale_x
+        self.scale_y   = scale_y
+        self.grab_fps  = grab_fps
+        self.send_fps  = send_fps
 
 class Configurator():
     def __init__(self, logger, proj_path, stream_index):
@@ -100,14 +101,15 @@ class Configurator():
             self.logger.info(f"\n> {cam_model} <\n{pprint.pformat(cam_config_dict, indent=4, sort_dicts=False)}\n")
             stream_params = CamParams(
                 pixel_format_str = cam_config_dict["pixel_format"],
-                offset_x = int(cam_config_dict["offset_x"]),
-                offset_y = int(cam_config_dict["offset_y"]),
-                width    = int(cam_config_dict["width"]),
-                height   = int(cam_config_dict["height"]),
-                scale_x  = int(cam_config_dict["scale_x"]),
-                scale_y  = int(cam_config_dict["scale_y"]),
-                grab_fps = int(cam_config_dict["grab_fps"]),
-                send_fps = int(cam_config_dict["send_fps"]),
+                offset_x  = int(cam_config_dict["offset_x"]),
+                offset_y  = int(cam_config_dict["offset_y"]),
+                width     = int(cam_config_dict["width"]),
+                height    = int(cam_config_dict["height"]),
+                binning = int(cam_config_dict["binning"]),
+                scale_x   = int(cam_config_dict["scale_x"]),
+                scale_y   = int(cam_config_dict["scale_y"]),
+                grab_fps  = int(cam_config_dict["grab_fps"]),
+                send_fps  = int(cam_config_dict["send_fps"]),
             )
         return stream_params
 
