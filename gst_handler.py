@@ -86,6 +86,9 @@ class GstSender:
         self.add_element_and_link("queue", "queue", link_to="capsfilter2") # Create queue
         self.add_element_and_link("x265enc", "x265enc", link_to="queue") # Create x265enc
         self.pipeline.get_by_name("x265enc").set_property('tune', 'zerolatency') # x265enc tune=zerolatency to ensure less delay
+        self.pipeline.get_by_name("x265enc").set_property('bitrate', 200) # TODO
+        #self.pipeline.get_by_name("x265enc").set_property('intra-refresh', 'true') # TODO
+
         self.add_element_and_link("capsfilter", "capsfilter3", link_to="x265enc") # Create capsfilter3
         self.pipeline.get_by_name('capsfilter3').set_property('caps', Gst.Caps.from_string('video/x-h265, stream-format=byte-stream'))
         self.add_element_and_link("rtph265pay", "rtph265pay", link_to="capsfilter3") # Create rtph265pay
