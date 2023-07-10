@@ -9,7 +9,7 @@ from communication.udp_imp import UDP
 from ICD import cv_structs
 
 class Communicator():
-    def __init__(self, logger, print_messages, receive_channel, send_channel, handle_ctypes_msg_callback):
+    def __init__(self, logger, print_messages, receive_channel, send_channel, send_from_port, handle_ctypes_msg_callback):
         self.logger = logger
         self.print_messages = print_messages
         self.handle_ctypes_msg_callback = handle_ctypes_msg_callback
@@ -29,7 +29,7 @@ class Communicator():
         
         
         # Init udp sockets
-        self.UDP_conn = UDP(receive_channel, send_channel)
+        self.UDP_conn = UDP(receive_channel, send_channel, send_from_port=send_from_port)
 
         self.keep_receiving = True
         self.received_msg_queue = None
@@ -131,8 +131,9 @@ if __name__ == "__main__":
 
     receive_channel = ("127.0.0.1", 5101)
     send_channel = ("127.0.0.1", 5101)
-
-    communicator = Communicator(logger, receive_channel, send_channel, handle_ctypes_msg_callback)
+    send_from_port = None
+    
+    communicator = Communicator(logger, receive_channel, send_channel, send_from_port, handle_ctypes_msg_callback)
     communicator.start_receiver_thread() # Start receiver loop
     
     # Simulate sending

@@ -84,6 +84,23 @@ class ArvCamera(VideoFeeder):
         
         self.logger.info(f"ROI           : {width}x{height} at {offset_x},{offset_y}")
         
+        # Set binning
+        try:
+            if self.cam_config.binning >= 0:
+                self.arv_camera.set_integer("BinningVertical", int(self.cam_config.binning))
+                binning_x, binning_y = self.arv_camera.get_binning()
+                self.logger.info(f"Binning       : {binning_x}, {binning_y}")
+        except gi.repository.GLib.Error as e:
+            self.logger.error(f"{e}\nCould not set binning")
+            return False, None
+        
+        # Remove pattern from pleora
+        try:
+            self.arv_camera.set_string("TestImageSelector", "Off")
+        except gi.repository.GLib.Error as e:
+            self.logger.error(f"{e}\nCould not remove pattern")
+            return False, None
+        
         # Set frame rate
         try:
             if self.cam_config.grab_fps >= 0:
@@ -132,27 +149,34 @@ class ArvCamera(VideoFeeder):
         self.arv_stream.push_buffer(cam_buffer)
 
     def get_next_frame(self):
+        frame_flag = True
         # Get frame
         cam_buffer = self.arv_stream.pop_buffer()
 
         # Get raw buffer
         buf = cam_buffer.get_data()
-        #self.logger.info(f"Bits per pixel {len(buf)/self.height/self.width}")
-        if self.cam_config.pixel_format_str == "PIXEL_FORMAT_BAYER_GR_8":
-            frame_raw = np.frombuffer(buf, dtype='uint8').reshape((self.cam_config.height, self.cam_config.width))
-
-            # Bayer2RGB
-            frame_np = cv2.cvtColor(frame_raw, cv2.COLOR_BayerGR2RGB)
-        elif self.cam_config.pixel_format_str == "PIXEL_FORMAT_MONO_8":
-            frame_raw = np.frombuffer(buf, dtype='uint8').reshape((self.cam_config.height, self.cam_config.width))
-
-            # Bayer2RGB
-            frame_np = cv2.cvtColor(frame_raw, cv2.COLOR_GRAY2RGB)
-        else:
-            self.logger.info(f"Convertion from {self.cam_config.pixel_format_str} not supported")
+        if len(buf) == 0:
             frame_np = None
+            frame_flag = False
+
+        if frame_flag:
+            #self.logger.info(f"Bits per pixel {len(buf)/self.height/self.width}")
+            if self.cam_config.pixel_format_str == "PIXEL_FORMAT_BAYER_GR_8":
+                frame_raw = np.frombuffer(buf, dtype='uint8').reshape((self.cam_config.height, self.cam_config.width))
+                # Bayer2RGB
+                frame_np = cv2.cvtColor(frame_raw, cv2.COLOR_BayerGR2RGB)
+            elif self.cam_config.pixel_format_str == "PIXEL_FORMAT_MONO_8":
+                    frame_raw = np.frombuffer(buf, dtype='uint8').reshape((self.cam_config.height, self.cam_config.width))
+                    # Bayer2RGB
+                    frame_np = cv2.cvtColor(frame_raw, cv2.COLOR_GRAY2RGB)
+            else:
+                self.logger.info(f"Convertion from {self.cam_config.pixel_format_str} not supported")
+                frame_np = None
         
         return frame_np, cam_buffer
     
     def stop_acquisition(self):
-        self.arv_camera.stop_acquisition()
+        try:
+            self.arv_camera.stop_acquisition()
+        except Exception as e:
+            self.logger.error(f"Could not stop acquisition: {e}")
