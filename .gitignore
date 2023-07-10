@@ -4,3 +4,4 @@ __pycache__/*
 *.bkp
 *.dtmp
 env_bu/*
+recordings_*
