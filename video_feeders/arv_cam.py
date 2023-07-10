@@ -72,6 +72,14 @@ class ArvCamera(VideoFeeder):
             self.logger.error(f"{e}\nCould not set binning")
             return False, None
 
+        # Set decimation
+        # try:
+        #     if self.cam_config.binning >= 0:
+        #         self.arv_camera.set_integer("DecimationVertical", int(self.cam_config.binning))
+        # except gi.repository.GLib.Error as e:
+        #     self.logger.error(f"{e}\nCould not set binning")
+        #     return False, None
+
         # Set ROI
         try:
             self.arv_camera.set_region(
