@@ -149,25 +149,29 @@ class ArvCamera(VideoFeeder):
         self.arv_stream.push_buffer(cam_buffer)
 
     def get_next_frame(self):
+        frame_flag = True
         # Get frame
         cam_buffer = self.arv_stream.pop_buffer()
 
         # Get raw buffer
         buf = cam_buffer.get_data()
-        #self.logger.info(f"Bits per pixel {len(buf)/self.height/self.width}")
-        if self.cam_config.pixel_format_str == "PIXEL_FORMAT_BAYER_GR_8":
-            frame_raw = np.frombuffer(buf, dtype='uint8').reshape((self.cam_config.height, self.cam_config.width))
-
-            # Bayer2RGB
-            frame_np = cv2.cvtColor(frame_raw, cv2.COLOR_BayerGR2RGB)
-        elif self.cam_config.pixel_format_str == "PIXEL_FORMAT_MONO_8":
-            frame_raw = np.frombuffer(buf, dtype='uint8').reshape((self.cam_config.height, self.cam_config.width))
-
-            # Bayer2RGB
-            frame_np = cv2.cvtColor(frame_raw, cv2.COLOR_GRAY2RGB)
-        else:
-            self.logger.info(f"Convertion from {self.cam_config.pixel_format_str} not supported")
+        if len(buf) == 0:
             frame_np = None
+            frame_flag = False
+
+        if frame_flag:
+            #self.logger.info(f"Bits per pixel {len(buf)/self.height/self.width}")
+            if self.cam_config.pixel_format_str == "PIXEL_FORMAT_BAYER_GR_8":
+                frame_raw = np.frombuffer(buf, dtype='uint8').reshape((self.cam_config.height, self.cam_config.width))
+                # Bayer2RGB
+                frame_np = cv2.cvtColor(frame_raw, cv2.COLOR_BayerGR2RGB)
+            elif self.cam_config.pixel_format_str == "PIXEL_FORMAT_MONO_8":
+                    frame_raw = np.frombuffer(buf, dtype='uint8').reshape((self.cam_config.height, self.cam_config.width))
+                    # Bayer2RGB
+                    frame_np = cv2.cvtColor(frame_raw, cv2.COLOR_GRAY2RGB)
+            else:
+                self.logger.info(f"Convertion from {self.cam_config.pixel_format_str} not supported")
+                frame_np = None
         
         return frame_np, cam_buffer
     

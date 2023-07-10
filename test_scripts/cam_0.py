@@ -2,6 +2,7 @@ import logging
 import gi
 import numpy as np
 import cv2
+import time
 
 gi.require_version('Aravis', '0.8')
 from gi.repository import Aravis
@@ -17,7 +18,7 @@ logger.addHandler(ch)
 logger.info("Welcome to Grabber")
 
 # Connect to camera
-arv_camera = Aravis.Camera.new("192.168.132.210")
+arv_camera = Aravis.Camera.new("192.168.132.215")
 cam_vendor = arv_camera.get_vendor_name()
 logger.info(f"Camera vendor : {cam_vendor}")
 cam_model = arv_camera.get_model_name()
@@ -28,10 +29,11 @@ x = 320
 y = 240
 w = 640
 h = 480
-arv_camera.set_region(x, y, w, h)
-arv_camera.set_frame_rate(20)
-pixel_format = Aravis.PIXEL_FORMAT_BAYER_GR_8
-arv_camera.set_pixel_format(pixel_format)
+#arv_camera.set_region(x, y, w, h)
+#arv_camera.set_frame_rate(20)
+pixel_format = Aravis.PIXEL_FORMAT_MONO_8
+#pixel_format = Aravis.PIXEL_FORMAT_BAYER_GR_8
+#arv_camera.set_pixel_format(pixel_format)
 payload = arv_camera.get_payload()
 logger.info(f"Payload       : {payload}")
 
@@ -39,7 +41,7 @@ logger.info(f"Payload       : {payload}")
 arv_stream = arv_camera.create_stream(None, None)
 
 # Allocate aravis buffers
-for i in range(0,10):
+for i in range(0,20):
     arv_stream.push_buffer(Aravis.Buffer.new_allocate(payload))
 
 logger.info("Start acquisition")
@@ -53,7 +55,10 @@ while True:
 
     # Get raw buffer
     buf = cam_buffer.get_data()
-    if len(buf) == 0: continue
+    if len(buf) == 0:
+        print(time.time(), "Buffer Length 0")
+        arv_stream.push_buffer(cam_buffer)
+        continue
     
     if pixel_format == Aravis.PIXEL_FORMAT_BAYER_GR_8:
         frame_raw = np.frombuffer(buf, dtype='uint8').reshape((h, w))

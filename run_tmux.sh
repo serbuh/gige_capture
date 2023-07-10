@@ -1,6 +1,7 @@
 #!/bin/bash
 
 echo "Welcome to the Vision Launcher"
+#sudo ifconfig en01 mtu 9000
 
 tmux_session_name=vision
 
