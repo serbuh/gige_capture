@@ -47,18 +47,18 @@ if $kill_and_exit; then
   exit 0
 fi
 
-sleep 0.1s
+sleep 3.1s
 
 echo "Create new tmux session ($tmux_session_name)"
 tmux new -d -s $tmux_session_name
 
 # Run first cam grabber
-run_cmd='python grab.py 0'
+run_cmd='env/bin/python grab.py 0'
 tmux new-window -n main -t $tmux_session_name $run_cmd
 tmux set-option -w -t 0 remain-on-exit on
 
 # Run second cam grabber
-run_cmd='python grab.py 1'
+run_cmd='env/bin/python grab.py 1'
 tmux split-window -h -t $tmux_session_name $run_cmd
 
 # Run status
@@ -67,7 +67,7 @@ run_cmd='htop'
 
 if $run_client; then
   # Run client
-  run_cmd='python client/client.py'
+  run_cmd='env/bin/python client/client.py'
   tmux new-window -n client -t $tmux_session_name $run_cmd
 
   # Return to server's window

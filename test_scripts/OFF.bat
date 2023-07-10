@@ -1,0 +1,1 @@
+ssh lab_pele@192.168.132.212 "cd /home/lab_pele/MA/gige_capture/ && ./run_tmux.sh -k"
