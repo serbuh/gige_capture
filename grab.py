@@ -220,6 +220,8 @@ class Grabber():
                 
                 if frame_np is None:
                     self.logger.warning("None frame")
+                    if cam_buffer:
+                        self.stream.video_feeder.release_cam_buffer(cam_buffer)
                     continue
 
                 # Show frame with cv2

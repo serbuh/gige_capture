@@ -62,6 +62,16 @@ class ArvCamera(VideoFeeder):
         return camera, cam_model
 
     def set_arv_params(self):
+        # Set binning
+        try:
+            if self.cam_config.binning >= 0:
+                self.arv_camera.set_integer("BinningVertical", int(self.cam_config.binning))
+                binning_x, binning_y = self.arv_camera.get_binning()
+                self.logger.info(f"Binning       : {binning_x}, {binning_y}")
+        except gi.repository.GLib.Error as e:
+            self.logger.error(f"{e}\nCould not set binning")
+            return False, None
+
         # Set ROI
         try:
             self.arv_camera.set_region(
@@ -83,16 +93,6 @@ class ArvCamera(VideoFeeder):
             return False, None
         
         self.logger.info(f"ROI           : {width}x{height} at {offset_x},{offset_y}")
-        
-        # Set binning
-        try:
-            if self.cam_config.binning >= 0:
-                self.arv_camera.set_integer("BinningVertical", int(self.cam_config.binning))
-                binning_x, binning_y = self.arv_camera.get_binning()
-                self.logger.info(f"Binning       : {binning_x}, {binning_y}")
-        except gi.repository.GLib.Error as e:
-            self.logger.error(f"{e}\nCould not set binning")
-            return False, None
         
         # Remove pattern from pleora
         try:
