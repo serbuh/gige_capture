@@ -10,6 +10,11 @@
     send_status = true
     print_messages = false
 
+[MessagesHandler]
+    enable_messages_interface = true
+    send_status = true
+    print_messages = true
+
 [Cams]
     active_camera = "camera1"
 
