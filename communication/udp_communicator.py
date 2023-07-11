@@ -39,6 +39,7 @@ class Communicator():
         return isinstance(channel, tuple) and len(channel) == 2 and isinstance(channel[0], str) and isinstance(channel[1], int)
 
     def start_receiver_thread(self):
+        self.logger.info("Starting receiving thread")
         self.receive_thread = threading.Thread(target=self.receive_loop)
         self.receive_thread.start()
     
@@ -60,13 +61,17 @@ class Communicator():
         '''
         receive commands and put them to Q
         '''
-        while self.keep_receiving:
-            msg_serialized_list = self.UDP_conn.recv_select()
-            for msg_serialized in msg_serialized_list:
-                msg = self.deserialize_to_ctypes(msg_serialized) # Try to deserialize
-                self.handle_ctypes_msg_callback(msg)
+        try:
+            while self.keep_receiving:
+                msg_serialized_list = self.UDP_conn.recv_select()
+                for msg_serialized in msg_serialized_list:
+                    msg = self.deserialize_to_ctypes(msg_serialized) # Try to deserialize
+                    self.handle_ctypes_msg_callback(msg)
 
-            time.sleep(0.01)
+                time.sleep(0.01)
+        except KeyboardInterrupt:
+            self.logger.info("Interrupted by Ctrl+C (in Client)")
+            exit()
 
     def register_callback(self, name, func):
         self.logger.info(f"TODO: Registering function for callback {name}")
