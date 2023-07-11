@@ -12,15 +12,11 @@ class activateCameraSensors(enum.Enum):
 
 class vision_status_msg(cu_mrg.CvStatusMessage):
     def __str__(self):
-        cam_info= lambda cam : f"Frame {cam.frameId} @ {cam.fps} [Hz] bitrate {cam.bitrateKBs} offset({cam.cameraOffsetX}, {cam.cameraOffsetY}) calibration {cam.calibration} addOverlay {cam.addOverlay}"
-        cam_str = cam_info(self.cameraStatus)
-        return cam_str
+        return f"Frame {self.cameraStatus.frameId} @ {self.cameraStatus.fps} [Hz] bitrate {self.cameraStatus.bitrateKBs} offset({self.cameraStatus.cameraOffsetX}, {self.cameraStatus.cameraOffsetY}) calibration {self.cameraStatus.calibration} addOverlay {self.cameraStatus.addOverlay}"
 
 class client_set_params_msg(cu_mrg.SetCvParamsCmdMessage):
     def __str__(self):
-        cam_info= lambda cam : f"Frame {cam.frameId} @ {cam.fps} [Hz] bitrate {cam.bitrateKBs} offset({cam.cameraOffsetX}, {cam.cameraOffsetY}) calibration {cam.calibration} addOverlay {cam.addOverlay}"
-        cam_str = cam_info(self.cameraControl)
-        return cam_str
+        return f"Frame {self.cameraControl.frameId} @ {self.cameraControl.fps} [Hz] bitrate {self.cameraControl.bitrateKBs} offset({self.cameraControl.cameraOffsetX}, {self.cameraControl.cameraOffsetY}) calibration {'(V)' if self.cameraControl.calibration else '(X)'} addOverlay {'(V)' if self.cameraControl.addOverlay else '(X)'}"
 
 class vision_set_params_ack_msg(cu_mrg.SetCvParamsAckMessage):
     def __str__(self):
