@@ -3,7 +3,7 @@
 
 import serial
 
-def run_op():
+def do_NUC():
     def open_serial_connection(port, baud):
         s = serial.Serial()
         s.port = port
@@ -35,5 +35,6 @@ def run_op():
     init(serial_connection)
     nuc(serial_connection)
 
-run_op()
+if __name__ == "__main__":
+    do_NUC()
    

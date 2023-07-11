@@ -34,7 +34,7 @@ from video_feeders.frame_generator import FrameGenerator
 from video_feeders.arv_cam import ArvCamera
 from ICD import cv_structs
 from communication.udp_communicator import Communicator
-
+from test_scripts.voxi_nuc import do_NUC
 
 class CamParams():
     def __init__(self, pixel_format_str, offset_x, offset_y, width, height, binning, scale_x, scale_y, grab_fps, send_fps):
@@ -232,22 +232,27 @@ class Grabber():
         elif isinstance(msg, cv_structs.client_set_params_msg):
             
             if msg.cameraControl.calibration.value:
-                self.logger.info("NUC!")
+                self.logger.info("Do NUC")
+                try:
+                    do_NUC()
+                except Exception as e:
+                    self.logger.error(f"Failed to do the NUC: {e}")
+                    self.send_ack(False, 1)
+                else:
+                    self.logger.info("Nuc complete")
+                    self.send_ack()
 
             elif msg.cameraControl.addOverlay.value:
                 self.logger.info("ADD OVERLAY!")
+                self.send_ack()
 
             else:
                 new_bitrate = int(msg.cameraControl.bitrateKBs.real)
-                self.logger.info(f"Set bitrate to {new_bitrate} KBs")
+                new_fps = int(msg.cameraControl.fps.real)
+                self.logger.info(f"Set bitrate to {new_bitrate} [KBs], FPS to {new_fps} [Hz]")
+                self.send_ack()
             
             # TODO do things
-            
-            self.logger.info("Sending ack")
-            # Create ack
-            params_result_msg = cv_structs.create_cv_command_ack(isOk=True)
-            # Send Ack
-            self.communicator.send_ctypes_msg(params_result_msg)
         
         elif isinstance(msg, cv_structs.vision_status_msg):
             self.logger.warning("Got vision status from ourselves?")
@@ -258,6 +263,15 @@ class Grabber():
         # Put in Queue (if valid opcode)
         if self.communicator.received_msg_queue is not None:
             self.communicator.received_msg_queue.put_nowait(msg)
+    
+    def send_ack(self, isOk=True, errorCode=0):
+        isOk_str = 'Ok' if isOk else 'BAD'
+        errorCode_str = f', errorCode={errorCode}' if errorCode else ""
+        self.logger.info(f"Sending ACK({isOk_str}{errorCode_str})")
+        # Create ack
+        params_result_msg = cv_structs.create_cv_command_ack(isOk, errorCode)
+        # Send Ack
+        self.communicator.send_ctypes_msg(params_result_msg)
 
     def grabber_loop(self):
         if self.messages_handler_thread is not None:

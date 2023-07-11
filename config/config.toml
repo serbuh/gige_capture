@@ -1,5 +1,5 @@
 [Cams]
-    video_enabled    = false
+    video_enabled    = true
     messages_enabled = true
     send_status      = true
     print_messages   = false
