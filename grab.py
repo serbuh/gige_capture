@@ -231,7 +231,18 @@ class Grabber():
 
         elif isinstance(msg, cv_structs.client_set_params_msg):
             
+            if msg.cameraControl.calibration.value:
+                self.logger.info("NUC!")
+
+            elif msg.cameraControl.addOverlay.value:
+                self.logger.info("ADD OVERLAY!")
+
+            else:
+                new_bitrate = int(msg.cameraControl.bitrateKBs.real)
+                self.logger.info(f"Set bitrate to {new_bitrate} KBs")
+            
             # TODO do things
+            
             self.logger.info("Sending ack")
             # Create ack
             params_result_msg = cv_structs.create_cv_command_ack(isOk=True)
