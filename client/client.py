@@ -14,13 +14,18 @@ class Client():
         def handle_msg(msg):
             self.logger.info(f">> Got:\n{msg}") # Client
 
-        receive_reports_channel = ("127.0.0.1", 5111)
-        send_cmds_channel = ("127.0.0.1", 5100)
+        receive_reports_1_channel = ("127.0.0.1", 5010)
+        send_cmds_1_channel = ("127.0.0.1", 5011)
+        receive_reports_2_channel = ("127.0.0.1", 5020)
+        send_cmds_2_channel = ("127.0.0.1", 5021)
         print_messages = True
         send_from_port = None
 
-        self.communicator = Communicator(logger, print_messages, receive_reports_channel, send_cmds_channel, send_from_port, handle_msg)
-        self.communicator.start_receiver_thread() # Start receiver loop
+        self.communicator_1 = Communicator(logger, print_messages, receive_reports_1_channel, send_cmds_1_channel, send_from_port, handle_msg)
+        self.communicator_1.start_receiver_thread() # Start receiver loop
+
+        self.communicator_2 = Communicator(logger, print_messages, receive_reports_2_channel, send_cmds_2_channel, send_from_port, handle_msg)
+        self.communicator_2.start_receiver_thread() # Start receiver loop
 
     def init_gui(self):
         # Create the main window
@@ -109,21 +114,23 @@ class Client():
     def change_cam_params(self, cam_id):
         # TODO Get right values form GUI
         frameId = 0
-        fps = int(self.fps_1_stringvar.get())
-        bitrateKBs = int(self.bitrate_1_stringvar.get())
-        calibration = False
-        addOverlay = False
-
-        calibration = self.calibration_1_intvar.get()
+        
+        fps = int(getattr(self, f"fps_{cam_id}_stringvar").get())
+        bitrateKBs = int(getattr(self, f"bitrate_{cam_id}_stringvar").get())
+        calibration = getattr(self, f"calibration_{cam_id}_intvar").get()
         calibration_str = "(V)" if calibration else "(X)"
-
-        addOverlay = self.addOverlay_1_intvar.get()
+        addOverlay = getattr(self, f"addOverlay_{cam_id}_intvar").get()
         addOverlay_str = "(V)" if addOverlay else "(X)"
 
         self.logger.info(f"Cam {cam_id} FPS {fps} bitrate {bitrateKBs} calibration {calibration_str} addOverlay {addOverlay_str}")
 
         cv_command = cv_structs.create_cv_command(frameId, fps, bitrateKBs, calibration, addOverlay)
-        self.communicator.send_ctypes_msg(cv_command)
+        if cam_id == 1:
+            self.communicator_1.send_ctypes_msg(cv_command)
+        elif cam_id == 2:
+            self.communicator_2.send_ctypes_msg(cv_command)
+        else:
+            self.logger.error(f"BAD cam_id {cam_id}")
 
 
 if __name__=='__main__':
