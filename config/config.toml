@@ -1,8 +1,9 @@
-[Grabber]
-    
-
 [Cams]
-    active_camera = "camera1"
+    video_enabled    = false
+    messages_enabled = true
+    send_status      = true
+    print_messages   = false
+    active_camera    = "camera1"
 
     [Cams.0] # flir
         #cam_ip = "192.168.132.215" # Artificial / 192.168.132.210
@@ -16,10 +17,7 @@
         send_reports_ip = "192.168.132.60"           # "192.168.132.60"
         send_reports_port = 5010
         send_from_port = 5011
-        enable_messages_interface = true
-        send_status = true
-        print_messages = false
-
+        
         save_frames = false
         recordings_dir = "recordings_first"
         send_frames_gst = true
@@ -37,9 +35,6 @@
         send_reports_ip = "192.168.132.60"           # "192.168.132.60"
         send_reports_port = 5020
         send_from_port = 5021
-        enable_messages_interface = true
-        send_status = true
-        print_messages = false
         
         save_frames = false
         recordings_dir = "recordings_second"

@@ -67,6 +67,11 @@ class Configurator():
         except Exception as e:
             self.logger.error(f"{e}\nFailed to get active_camera from toml")
             exit()
+        
+        self.video_enabled    = bool(self.config['Cams']['video_enabled'])
+        self.messages_enabled = bool(self.config['Cams']['messages_enabled'])
+        self.send_status      = bool(self.config['Cams']['send_status'])
+        self.print_messages   = bool(self.config['Cams']['print_messages'])
 
         # Config cams
         class CamParams():
@@ -82,9 +87,6 @@ class Configurator():
                 self.receive_cmds_channel = (str(cam_config_section['receive_cmds_ip']), int(cam_config_section['receive_cmds_port']))
                 self.send_reports_channel = (str(cam_config_section['send_reports_ip']), int(cam_config_section['send_reports_port']))
                 self.send_from_port       = int(cam_config_section['send_from_port'])
-                self.enable_messages_interface = cam_config_section['enable_messages_interface']
-                self.send_status               = cam_config_section['send_status']
-                self.print_messages            = cam_config_section['print_messages']
 
         # Cam params
         self.cam_params = CamParams(self.config['Cams'][str(stream_index)], self.file_dir)
@@ -138,17 +140,6 @@ class Stream():
         stream_name = self.video_feeder.cam_model
         self.stream_name = stream_name if stream_name is not None else "No Name"
 
-        # UDP ctypes messages interface
-        if stream_params.enable_messages_interface:
-            self.communicator = Communicator(self.logger, stream_params.print_messages, stream_params.receive_cmds_channel, stream_params.send_reports_channel, stream_params.send_from_port, self.handle_ctypes_msg_callback)
-            self.new_messages_queue = queue.Queue()
-            self.communicator.set_receive_queue(self.new_messages_queue)
-            #self.communicator.register_callback("change_fps", self.change_fps)
-            self.communicator.start_receiver_thread() # Start receiver loop
-            
-        else:
-            self.communicator = None
-        
         self.logger.info(f"   Stream   {self.stream_ip}   {result_str}   ".center(70, "#"))
 
     def init_grabber(self, ip):
@@ -173,42 +164,37 @@ class Stream():
     def print_status(self):
         self.logger.info(f"{self.stream_ip:16} {self.stream_name:30} {'OK' if self.initialized else 'BAD'}")
     
-    def handle_ctypes_msg_callback(self, msg):
-        self.logger.info(f">> Got:\n{msg}") # Server
-        
-        if msg is None:
-            self.logger.error("Invalid message. Ignoring")
-            return
-
-        elif isinstance(msg, cv_structs.client_set_params_msg):
-            
-            # TODO do things
-            self.logger.info("Sending ack")
-            # Create ack
-            params_result_msg = cv_structs.create_cv_command_ack(isOk=True)
-            # Send Ack
-            self.communicator.send_ctypes_msg(params_result_msg)
-        
-        elif isinstance(msg, cv_structs.vision_status_msg):
-            self.logger.warning(f"got vision status from ourselves?")
-        
-        else:
-            self.logger.warning(f"Trying to handle unknown msg type {type(msg)}")
-        
-        # Put in Queue (if valid opcode)
-        if self.communicator.received_msg_queue is not None:
-            self.communicator.received_msg_queue.put_nowait(msg)
-
     
 class Grabber():
     def __init__(self, logger, proj_path, stream_index):
         self.logger = logger
         self.stream_index = stream_index
-        self.keep_going = True
+        self.keep_going_video = True
+        self.keep_going_messages = True
         self.configurator = Configurator(logger, proj_path, stream_index)
         
         self.active_camera = self.configurator.active_camera # TODO
 
+        # Start UDP messages interface
+        if self.configurator.messages_enabled: 
+            self.messages_handler_thread = threading.Thread(target=self.messages_loop)
+            self.communicator = Communicator(self.logger, self.configurator.print_messages, self.configurator.cam_params.receive_cmds_channel, self.configurator.cam_params.send_reports_channel, self.configurator.cam_params.send_from_port, self.handle_ctypes_msg_callback)
+            self.new_messages_queue = queue.Queue()
+            self.communicator.set_receive_queue(self.new_messages_queue)
+            #self.communicator.register_callback("change_fps", self.change_fps)
+            self.communicator.start_receiver_thread() # Start receiver loop
+            
+        else:
+            self.logger.warning("NO MESSAGES MODE ACTIVATED")
+            self.keep_going_messages = False
+            self.communicator = None
+            self.messages_handler_thread = None
+
+        if not self.configurator.video_enabled:
+            self.logger.warning("NO VIDEO MODE ACTIVATED")
+            self.keep_going_video = False
+            return
+        
         # Init stream
         self.stream = Stream(logger, self.configurator, self.configurator.cam_params)
 
@@ -216,6 +202,7 @@ class Grabber():
             self.logger.error(f"Stream[{stream_index}] FAILED to initialize")
             self.destroy_all()
             exit()
+        
         
         # Show frames with cv2
         # NOTE: Deprecated
@@ -235,10 +222,45 @@ class Grabber():
         else:
             self.stream.gst_sender = None
 
-    def stream_loop(self):
+    def handle_ctypes_msg_callback(self, msg):
+        self.logger.info(f">> Got:\n{msg}") # Server
+        
+        if msg is None:
+            self.logger.error("Invalid message. Ignoring")
+            return
+
+        elif isinstance(msg, cv_structs.client_set_params_msg):
+            
+            # TODO do things
+            self.logger.info("Sending ack")
+            # Create ack
+            params_result_msg = cv_structs.create_cv_command_ack(isOk=True)
+            # Send Ack
+            self.communicator.send_ctypes_msg(params_result_msg)
+        
+        elif isinstance(msg, cv_structs.vision_status_msg):
+            self.logger.warning("Got vision status from ourselves?")
+        
+        else:
+            self.logger.warning(f"Trying to handle unknown msg type {type(msg)}")
+        
+        # Put in Queue (if valid opcode)
+        if self.communicator.received_msg_queue is not None:
+            self.communicator.received_msg_queue.put_nowait(msg)
+
+    def grabber_loop(self):
+        if self.messages_handler_thread is not None:
+            self.messages_handler_thread.start() # Start messages handler thread
+
+        if not self.keep_going_video:
+            self.logger.info("Main thread is waiting for the messages handler to finish")
+            if self.messages_handler_thread is not None:
+                self.messages_handler_thread.join() # Wait messages handler to finish before finishing
+            return
+        
         self.logger.info(f"Start stream loop ({self.stream.stream_name})")
         frame_number = 0
-        while self.keep_going:
+        while self.keep_going_video:
             try:
                 frame_np, cam_buffer = self.stream.video_feeder.get_next_frame()
                 
@@ -295,39 +317,42 @@ class Grabber():
                 traceback.print_exc()
                 self.logger.info(f'Exception (in Grabber) on frame {self.stream.frame_count_tot}')
 
-        
+        self.logger.info("Keep going is false. Ending grabber loop")
+        self.destroy_all()
+
     def messages_loop(self):
         self.logger.info("Starting messages communication loop")
-        
-        while self.keep_going:
-            try:
-                # Receive commands / Send reports
-                if self.stream.stream_params.enable_messages_interface:
-                    # Send status
-                    if self.stream.stream_params.send_status:
-                        # TODO fill in the right values
-                        frame_number = 300
-                        fps = int(self.stream.last_fps)
-                        bitrateKBs = 10
-                        calibration = False
-                        addOverlay = False
-                        status_msg = cv_structs.create_status(frame_number, fps, bitrateKBs, calibration, addOverlay) # Create ctypes status
-                        self.stream.communicator.send_ctypes_msg(status_msg) # Send status
-                    
-                    # Read receive queue
-                    while not self.stream.new_messages_queue.empty():
-                        item = self.stream.new_messages_queue.get_nowait()
-                        self.handle_command(item)
+
+        while self.keep_going_messages:
+            try: # Receive commands / Send reports
+
+                # Send status
+                if self.configurator.send_status and getattr(self, "stream", None) is not None:
+                    # TODO fill in the right values
+                    frame_number = 300
+                    fps = int(self.stream.last_fps)
+                    bitrateKBs = 10
+                    calibration = False
+                    addOverlay = False
+                    status_msg = cv_structs.create_status(frame_number, fps, bitrateKBs, calibration, addOverlay) # Create ctypes status
+                    self.communicator.send_ctypes_msg(status_msg) # Send status
+                
+                # Handle received messages queue
+                while not self.new_messages_queue.empty():
+                    item = self.new_messages_queue.get_nowait()
+                    self.handle_command(item)
                 
                 time.sleep(1)
             
             except KeyboardInterrupt:
                 self.logger.info("Interrupted by Ctrl+C (in Grabber)")
-                self.destroy_all()
+                return
             
             except Exception:
                 traceback.print_exc()
                 self.logger.info(f'Exception (in Grabber) on frame {self.stream.frame_count_tot}')
+        
+        self.logger.info("Keep going is false. Ending messages loop")
 
     def handle_command(self, item):
         self.logger.info(f">> Handle {type(item)}") # Server
@@ -337,10 +362,11 @@ class Grabber():
 
     def destroy_all(self):
         self.logger.info("Stop the messages receiver thread")
-        self.keep_going = False
+        self.keep_going_video = False
+        self.keep_going_messages = False
         try:
-            if getattr(self.stream, "communicator", None) is not None and self.stream.communicator is not None:
-                self.stream.communicator.stop_receiver_thread()
+            if getattr(self, "communicator", None) is not None and self.communicator is not None:
+                self.communicator.stop_receiver_thread()
         except:
             traceback.print_exc()
             self.logger.info("Exception during stopping the receiver thread")
@@ -352,6 +378,11 @@ class Grabber():
         except:
             traceback.print_exc()
             self.logger.info("Exception during closing camera grabbing")
+        
+        self.logger.info("Waiting for the messages loop to end")
+        if self.messages_handler_thread is not None:
+            self.messages_handler_thread.join()
+        self.logger.info("Messages handler loop ended")
         
         self.logger.info("Stop the gstreamer")
         try:
@@ -394,5 +425,5 @@ if __name__ == "__main__":
     
     # Start grabber
     grabber = Grabber(logger, proj_path, args.stream_index)
-    grabber.stream_loop()
+    grabber.grabber_loop()
     logger.info("Bye!")
