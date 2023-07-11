@@ -88,24 +88,15 @@ class Client():
 
     
     def change_cam_params(self):
-        fps_1 = int(self.fps_1_stringvar.get())
-        fps_2 = int(self.fps_2_stringvar.get())
-        bitrate_1 = int(self.bitrate_1_stringvar.get())
-        bitrate_2 = int(self.bitrate_2_stringvar.get())
-        active_1 = self.active_cam_1_intvar.get()
-        active_2 = self.active_cam_2_intvar.get()
-        active_1_str = "(Active)" if active_1 else "(Inactive)"
-        active_2_str = "(Active)" if active_2 else "(Inactive)"
-        self.logger.info(f"Set new params:\nCam 1 FPS {fps_1} bitrate {bitrate_1} {active_1_str}\nCam 2 FPS {fps_2} bitrate {bitrate_2} {active_2_str}")
-        if active_1 and active_2:
-            active_cam = cv_structs.activateCameraSensors.camera1And2
-        elif active_1:
-            active_cam = cv_structs.activateCameraSensors.camera1
-        elif active_2:
-            active_cam = cv_structs.activateCameraSensors.camera2
-        else:
-            active_cam = cv_structs.activateCameraSensors.camera1 # By default the one is active
-        cv_command = cv_structs.create_cv_command(fps_1, fps_2, bitrateKBs_1=bitrate_1, bitrateKBs_2=bitrate_2, active_sensor=active_cam)
+        # TODO Get right values form GUI
+        frameId = 0
+        fps = int(self.fps_1_stringvar.get())
+        bitrateKBs = int(self.bitrate_1_stringvar.get())
+        self.logger.info(f"Set new params:\nFPS {fps} bitrate {bitrateKBs} ")
+        calibration = False
+        addOverlay = False
+
+        cv_command = cv_structs.create_cv_command(frameId, fps, bitrateKBs, calibration, addOverlay)
         self.communicator.send_ctypes_msg(cv_command)
 
 

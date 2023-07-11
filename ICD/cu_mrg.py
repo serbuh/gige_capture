@@ -1,12 +1,12 @@
 """
 	cu_mrg.py
 	This file was created automatically by the RIDA IO application
-	On: 11/06/2023 18:01:05
-	Rida IO HFileWriter Version: 1.0, last update: 12/05/2023 10:21:26
+	On: 11/07/2023 09:29:01
+	Rida IO HFileWriter Version: 1.0, last update: 09/03/2023 18:53:36
 	Rida Database Version: 1.0
 	Header File Version marked as: 0.0
-	ICD version marked as: 1002
-	Produced by: ORENSHM, On: D-2-MRG-LAB1
+	ICD version marked as: 1003
+	Produced by: SVC_MRG, On: MRG-DEV101
 	Enhancements & Maintenance is done by Software Infrastructure team, 
 	Missile Division.
 	ALL RIGHTS RESERVED RAFAEL (C) 08-2014 
@@ -18,7 +18,7 @@ from ctypes import *
 System Versions
 """
 h_ver_cu_mrg = 0.0                                          # Header File Version
-icd_ver_cu_mrg = 1002                                       # ICD Version
+icd_ver_cu_mrg = 1003                                       # ICD Version
 ridaDB_ver = 1.0                                            # Rida Database Version
 
 
@@ -104,6 +104,7 @@ navMeasurementOptions = c_ubyte
 Enums
 """
 class cuCmdOptions(c_ubyte):                                # Element 5280
+    stop = 0
     manual = 1
     modeling = 2
     byRoute = 10
@@ -113,6 +114,7 @@ class ezStatusOptions(c_ubyte):                             # Element 6727
     init = 0
     manual = 1
     modeling = 2
+    stop = 3
     byRouteInProgress = 10
     byRouteCompleted = 11
     byRouteFailure = 12
@@ -234,9 +236,12 @@ class cameraControlStruct(Structure):                       # Struct 7561
                 ("cameraOffsetY", unsigned_short),
                 ("fps", unsigned_char),
                 ("bitrateKBs", unsigned_char),
+                ("calibration", trueOrFalseOptions),
+                ("addOverlay", trueOrFalseOptions),
+                ("spare0", unsigned_char),
                 ("spare1", unsigned_char),
                 ("spare2", unsigned_char),
-                ("spare4Bytes", unsigned_int)]
+                ("spare3", unsigned_char)]
 
 class setCvParamsResultStruct(Structure):                   # Struct 7676
     _fields_ = [("isOk", trueOrFalseOptions),
@@ -244,14 +249,6 @@ class setCvParamsResultStruct(Structure):                   # Struct 7676
                 ("errorCode", unsigned_short),
                 ("spare4Bytes", unsigned_int)]
 
-class cvStatusStruct(Structure):                            # Struct 8162
-    _fields_ = [("camera1Status", cameraControlStruct),
-                ("camera2Status", cameraControlStruct),
-                ("selectedCameraSensors", activateCameraSensors),
-                ("spare1", unsigned_char),
-                ("spare2", unsigned_char),
-                ("spare3", unsigned_char),
-                ("spare4Bytes", unsigned_int)]
 
 class cuCmdStruct(Structure):                               # Struct 627
     _fields_ = [("initParams", initLocationParamsStruct),
@@ -263,7 +260,7 @@ class cuCmdStruct(Structure):                               # Struct 627
                 ("cuCmd", cuCmdOptions),
                 ("resetCnt", unsigned_char),
                 ("shouldRecord", trueOrFalseOptions),
-                ("spare1Byte", unsigned_char)]
+                ("inDoorSpeedKmh", unsigned_char)]
 
 class cuRouteCmdStruct(Structure):                          # Struct 1473
     _fields_ = [("orig2dCoordinate", coordinate2dGeoDegStruct),
@@ -309,15 +306,6 @@ class ezStatusStruct(Structure):                            # Struct 2680
                 ("spare2", unsigned_char),
                 ("spare3", unsigned_char)]
 
-class setCvParamsCmdStruct(Structure):                      # Struct 6657
-    _fields_ = [("camera1Control", cameraControlStruct),
-                ("camera2Control", cameraControlStruct),
-                ("selectedCameraSensors", activateCameraSensors),
-                ("spare1", unsigned_char),
-                ("spare2", unsigned_char),
-                ("spare3", unsigned_char),
-                ("spare4Bytes", unsigned_int)]
-
 
 
 """
@@ -344,7 +332,7 @@ class StopCmdMessage(Structure):                            # (Opcode 0x9) Messa
 
 class SetCvParamsCmdMessage(Structure):                     # (Opcode 0x32) Message 3250
     _fields_ = [("header", headerStruct),
-                ("cvParams", setCvParamsCmdStruct)]
+                ("cameraControl", cameraControlStruct)]
 
 class SetCvParamsAckMessage(Structure):                     # (Opcode 0x33) Message 3826
     _fields_ = [("header", headerStruct),
@@ -352,7 +340,7 @@ class SetCvParamsAckMessage(Structure):                     # (Opcode 0x33) Mess
 
 class CvStatusMessage(Structure):                           # (Opcode 0x30) Message 4076
     _fields_ = [("header", headerStruct),
-                ("cvStatus", cvStatusStruct)]
+                ("cameraStatus", cameraControlStruct)]
 
 
 """

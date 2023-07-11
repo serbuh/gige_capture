@@ -303,10 +303,15 @@ class Grabber():
             try:
                 # Receive commands / Send reports
                 if self.stream.stream_params.enable_messages_interface:
-                    frame_number = 300 # TODO
                     # Send status
                     if self.stream.stream_params.send_status:
-                        status_msg = cv_structs.create_status(frame_number, frame_number, int(self.stream.last_fps), int(self.stream.last_fps), bitrateKBs_1=10, bitrateKBs_2=10, active_camera=self.active_camera) # Create ctypes status
+                        # TODO fill in the right values
+                        frame_number = 300
+                        fps = int(self.stream.last_fps)
+                        bitrateKBs = 10
+                        calibration = False
+                        addOverlay = False
+                        status_msg = cv_structs.create_status(frame_number, fps, bitrateKBs, calibration, addOverlay) # Create ctypes status
                         self.stream.communicator.send_ctypes_msg(status_msg) # Send status
                     
                     # Read receive queue
