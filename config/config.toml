@@ -14,10 +14,9 @@
     active_camera = "camera1"
 
     [Cams.0] # flir
-        #ip = "192.168.132.215" # Artificial / 192.168.132.210
-        ip = "169.227.1.1"
+        #cam_ip = "192.168.132.215" # Artificial / 192.168.132.210
+        cam_ip = "169.227.1.1"
         enable_gst = true
-
         gst_destination_ip = "192.168.132.163" #"192.168.132.163"        # "192.168.132.60"
         gst_destination_port = 50010             # 5000
         save_frames = false
@@ -26,8 +25,8 @@
         show_frames_gst = false
     
     [Cams.1] # voxi
-        #ip = "192.168.132.211" # Artificial / 192.168.132.211
-        ip = "220.20.1.1"
+        #cam_ip = "192.168.132.211" # Artificial / 192.168.132.211
+        cam_ip = "220.20.1.1"
         enable_gst = true
         gst_destination_ip = "192.168.132.163" # "192.168.132.163"        # "192.168.132.60"
         gst_destination_port = 50020             # 5001

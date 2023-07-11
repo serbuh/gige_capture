@@ -71,13 +71,13 @@ class Configurator():
         # Config cams
         class CamParams():
             def __init__(self, cam_config_section, file_dir):
-                self.ip                  = cam_config_section['ip']
+                self.cam_ip              = cam_config_section['cam_ip']
                 self.show_frames_gst     = cam_config_section['show_frames_gst']
                 self.save_frames         = cam_config_section['save_frames']
                 self.recordings_basedir  = os.path.join(file_dir, cam_config_section['recordings_dir'])
                 self.enable_gst          = cam_config_section['enable_gst']
                 self.gst_destination     = (str(cam_config_section['gst_destination_ip']), int(cam_config_section['gst_destination_port']))
-                self.send_frames_gst       = cam_config_section['send_frames_gst']
+                self.send_frames_gst     = cam_config_section['send_frames_gst']
 
         # Cam params
         self.cam_params = CamParams(self.config['Cams'][str(stream_index)], self.file_dir)
@@ -120,7 +120,7 @@ class Stream():
         self.stream_params = stream_params
         self.recordings_full_path = None
         self.gst_sender = None
-        self.stream_ip = self.stream_params.ip
+        self.stream_ip = self.stream_params.cam_ip
         
         self.logger.info(f"   Init stream   {self.stream_ip}   ".center(70, "#"))
 
