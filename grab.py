@@ -288,35 +288,42 @@ class Grabber():
                 frame_number+=1
                 
             except KeyboardInterrupt:
-                self.logger.info("Interrupted by Ctrl+C")
+                self.logger.info("Interrupted by Ctrl+C (in Grabber)")
                 self.destroy_all()
             
             except Exception:
                 traceback.print_exc()
-                self.logger.info(f'Exception on frame {self.stream.frame_count_tot}')
+                self.logger.info(f'Exception (in Grabber) on frame {self.stream.frame_count_tot}')
 
-        # TODO revive status loop (in a separate thread)
         
-        # self.logger.info("Starting status loop")
+    def messages_loop(self):
+        self.logger.info("Starting messages communication loop")
         
-        # while self.keep_going:
-        #     frame_number = 300 # TODO
-
-        #     # Receive commands / Send reports # TODO separate from stream loop
-        #     if self.stream.stream_params.enable_messages_interface:
-        #         # Send status
-        #         if self.stream.stream_params.send_status:
-        #             status_msg = cv_structs.create_status(frame_number, frame_number, int(stream.last_fps), int(stream.last_fps), bitrateKBs_1=10, bitrateKBs_2=10, active_camera=self.active_camera) # Create ctypes status
-        #             self.communicator.send_ctypes_msg(status_msg) # Send status
+        while self.keep_going:
+            try:
+                # Receive commands / Send reports
+                if self.stream.stream_params.enable_messages_interface:
+                    frame_number = 300 # TODO
+                    # Send status
+                    if self.stream.stream_params.send_status:
+                        status_msg = cv_structs.create_status(frame_number, frame_number, int(self.stream.last_fps), int(self.stream.last_fps), bitrateKBs_1=10, bitrateKBs_2=10, active_camera=self.active_camera) # Create ctypes status
+                        self.stream.communicator.send_ctypes_msg(status_msg) # Send status
+                    
+                    # Read receive queue
+                    while not self.stream.new_messages_queue.empty():
+                        item = self.stream.new_messages_queue.get_nowait()
+                        self.handle_command(item)
                 
-        #         # Read receive queue
-        #         while not self.new_messages_queue.empty():
-        #             item = self.new_messages_queue.get_nowait()
-        #             self.handle_command(item)
+                time.sleep(1)
             
-        #     time.sleep(1)
-        
+            except KeyboardInterrupt:
+                self.logger.info("Interrupted by Ctrl+C (in Grabber)")
+                self.destroy_all()
             
+            except Exception:
+                traceback.print_exc()
+                self.logger.info(f'Exception (in Grabber) on frame {self.stream.frame_count_tot}')
+
     def handle_command(self, item):
         self.logger.info(f">> Handle {type(item)}") # Server
 
