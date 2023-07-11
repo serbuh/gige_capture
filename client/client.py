@@ -28,7 +28,8 @@ class Client():
 
         self.fps_1_stringvar, self.fps_2_stringvar, \
         self.bitrate_1_stringvar, self.bitrate_2_stringvar, \
-        self.active_cam_1_intvar, self.active_cam_2_intvar = \
+        self.calibration_1_intvar, self.calibration_2_intvar, \
+        self.addOverlay_1_intvar, self.addOverlay_2_intvar = \
             self.create_command_frame(window, frame_row=0, frame_column=0)
 
         window.mainloop()
@@ -37,64 +38,89 @@ class Client():
         # Create a frame
         command_frame = tk.Frame(window)
         command_frame.grid(row=frame_row, column=frame_column)
-
-        # Create the button
-        command_button = tk.Button(command_frame, text="Send command", command=self.change_cam_params)
-        command_button.grid(row=0, column=0)
-
-        # Row labels
-        row_1_label = tk.Label(command_frame, text="Cam 1:")
-        row_1_label.grid(row=1, column=0)
-        row_1_label = tk.Label(command_frame, text="Cam 2:")
-        row_1_label.grid(row=2, column=0)
+        
+        # Buttons
+        col = 0
+        cam_1_button = tk.Button(command_frame, text="Cam 1", command=self.change_cam_1_params)
+        cam_1_button.grid(row=1, column=col)
+        cam_2_button = tk.Button(command_frame, text="Cam 2", command=self.change_cam_2_params)
+        cam_2_button.grid(row=2, column=col)
 
         # FPS
+        col += 1
         fps_label = tk.Label(command_frame, text="FPS")
-        fps_label.grid(row=0, column=1)
+        fps_label.grid(row=0, column=col)
         fps_1_stringvar = tk.StringVar()
         fps_1_stringvar.set("25")
         fps_1_textbox = tk.Entry(command_frame, width=10, textvariable=fps_1_stringvar)
-        fps_1_textbox.grid(row=1, column=1)
+        fps_1_textbox.grid(row=1, column=col)
         fps_2_stringvar = tk.StringVar()
         fps_2_stringvar.set("25")
         fps_2_textbox = tk.Entry(command_frame, width=10, textvariable=fps_2_stringvar)
-        fps_2_textbox.grid(row=2, column=1)
+        fps_2_textbox.grid(row=2, column=col)
         
         # Bitrate
+        col += 1
         bitrate_label = tk.Label(command_frame, text="Bitrate [KBs]")
-        bitrate_label.grid(row=0, column=2)
+        bitrate_label.grid(row=0, column=col)
         bitrate_1_stringvar = tk.StringVar()
         bitrate_1_stringvar.set("10")
         bitrate_1_textbox = tk.Entry(command_frame, width=10, textvariable=bitrate_1_stringvar)
-        bitrate_1_textbox.grid(row=1, column=2)
+        bitrate_1_textbox.grid(row=1, column=col)
         bitrate_2_stringvar = tk.StringVar()
         bitrate_2_stringvar.set("10")
         bitrate_2_textbox = tk.Entry(command_frame, width=10, textvariable=bitrate_2_stringvar)
-        bitrate_2_textbox.grid(row=2, column=2)
+        bitrate_2_textbox.grid(row=2, column=col)
         
-        # Active cam
-        active_cam_label = tk.Label(command_frame, text="Active")
-        active_cam_label.grid(row=0, column=3)
-        active_cam_1_intvar = tk.IntVar()
-        active_cam_1_intvar.set(1)
-        active_cam_1_checkbutton = tk.Checkbutton(command_frame, variable=active_cam_1_intvar, onvalue=1, offvalue=0)
-        active_cam_1_checkbutton.grid(row=1, column=3)
-        active_cam_2_intvar = tk.IntVar()
-        active_cam_2_intvar.set(0)
-        active_cam_2_checkbutton = tk.Checkbutton(command_frame, variable=active_cam_2_intvar, onvalue=1, offvalue=0)
-        active_cam_2_checkbutton.grid(row=2, column=3)
+        # Calibration
+        col += 1
+        calibration_label = tk.Label(command_frame, text="Calibration")
+        calibration_label.grid(row=0, column=col)
+        calibration_1_intvar = tk.IntVar()
+        calibration_1_intvar.set(0)
+        calibration_1_checkbutton = tk.Checkbutton(command_frame, variable=calibration_1_intvar, onvalue=1, offvalue=0)
+        calibration_1_checkbutton.grid(row=1, column=col)
+        calibration_2_intvar = tk.IntVar()
+        calibration_2_intvar.set(0)
+        calibration_2_checkbutton = tk.Checkbutton(command_frame, variable=calibration_2_intvar, onvalue=1, offvalue=0)
+        calibration_2_checkbutton.grid(row=2, column=col)
 
-        return fps_1_stringvar, fps_2_stringvar, bitrate_1_stringvar, bitrate_2_stringvar, active_cam_1_intvar, active_cam_2_intvar
+        # AddOverlay
+        col += 1
+        addOverlay_label = tk.Label(command_frame, text="addOverlay")
+        addOverlay_label.grid(row=0, column=col)
+        addOverlay_1_intvar = tk.IntVar()
+        addOverlay_1_intvar.set(0)
+        addOverlay_1_checkbutton = tk.Checkbutton(command_frame, variable=addOverlay_1_intvar, onvalue=1, offvalue=0)
+        addOverlay_1_checkbutton.grid(row=1, column=col)
+        addOverlay_2_intvar = tk.IntVar()
+        addOverlay_2_intvar.set(0)
+        addOverlay_2_checkbutton = tk.Checkbutton(command_frame, variable=addOverlay_2_intvar, onvalue=1, offvalue=0)
+        addOverlay_2_checkbutton.grid(row=2, column=col)
+        
+        return fps_1_stringvar, fps_2_stringvar, bitrate_1_stringvar, bitrate_2_stringvar, calibration_1_intvar, calibration_2_intvar, addOverlay_1_intvar, addOverlay_2_intvar
 
+    def change_cam_1_params(self):
+        self.change_cam_params(1)
     
-    def change_cam_params(self):
+    def change_cam_2_params(self):
+        self.change_cam_params(2)
+
+    def change_cam_params(self, cam_id):
         # TODO Get right values form GUI
         frameId = 0
         fps = int(self.fps_1_stringvar.get())
         bitrateKBs = int(self.bitrate_1_stringvar.get())
-        self.logger.info(f"Set new params:\nFPS {fps} bitrate {bitrateKBs} ")
         calibration = False
         addOverlay = False
+
+        calibration = self.calibration_1_intvar.get()
+        calibration_str = "(V)" if calibration else "(X)"
+
+        addOverlay = self.addOverlay_1_intvar.get()
+        addOverlay_str = "(V)" if addOverlay else "(X)"
+
+        self.logger.info(f"Cam {cam_id} FPS {fps} bitrate {bitrateKBs} calibration {calibration_str} addOverlay {addOverlay_str}")
 
         cv_command = cv_structs.create_cv_command(frameId, fps, bitrateKBs, calibration, addOverlay)
         self.communicator.send_ctypes_msg(cv_command)
