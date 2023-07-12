@@ -22,6 +22,7 @@
         recordings_dir = "recordings_first"
         send_frames_gst = true
         show_frames_gst = false
+        initial_bitrate_h265 = 200
     
     [Cams.1] # voxi
         #cam_ip = "192.168.132.211" # Artificial / 192.168.132.211
@@ -40,6 +41,7 @@
         recordings_dir = "recordings_second"
         send_frames_gst = true
         show_frames_gst = false
+        initial_bitrate_h265 = 200
 
 ["Artificial"]
     pixel_format = "PIXEL_FORMAT_BAYER_GR_8"  # PIXEL_FORMAT_RGB_8_PACKED # PIXEL_FORMAT_YUV_422_PACKED # PIXEL_FORMAT_YUV_422_YUYV_PACKED

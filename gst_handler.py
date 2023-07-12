@@ -100,6 +100,9 @@ class GstSender:
         self.add_element_and_link("queue", "show_video_queue", link_to="splitter") # Create queue
         self.add_element_and_link("autovideosink", "sink", link_to="show_video_queue") # Create autovideosink
 
+    def change_bitrate(self, new_bitrate):
+        self.logger.info(f"Changing bitrate to {new_bitrate}")
+        self.pipeline.get_by_name("x265enc").set_property('bitrate', new_bitrate)
 
     def send_frame(self, frame_np):
     

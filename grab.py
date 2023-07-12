@@ -87,6 +87,7 @@ class Configurator():
                 self.receive_cmds_channel = (str(cam_config_section['receive_cmds_ip']), int(cam_config_section['receive_cmds_port']))
                 self.send_reports_channel = (str(cam_config_section['send_reports_ip']), int(cam_config_section['send_reports_port']))
                 self.send_from_port       = int(cam_config_section['send_from_port'])
+                self.initial_bitrate_h265 = cam_config_section['initial_bitrate_h265']
 
         # Cam params
         self.cam_params = CamParams(self.config['Cams'][str(stream_index)], self.file_dir)
@@ -128,6 +129,10 @@ class Stream():
         self.frame_count_fps = 0
         self.last_fps = 0
         self.start_time = time.time()
+
+        # Bitrate
+        self.current_bitrate_h265 = stream_params.initial_bitrate_h265
+        self.logger.info(f"Initial bitrate {self.current_bitrate_h265} [KBs]")
 
         # Init grabber
         self.initialized = self.init_grabber(self.stream_ip)
@@ -218,8 +223,7 @@ class Grabber():
 
         # Send frames options
         if self.stream.stream_params.enable_gst:
-            bitrate_h265 = 200 # TODO
-            self.stream.gst_sender = GstSender(self.logger, self.stream.stream_params.gst_destination, bitrate_h265, self.stream.cam_config.send_fps, self.stream.stream_params.show_frames_gst, self.stream.stream_params.send_frames_gst, from_testvideo=False)
+            self.stream.gst_sender = GstSender(self.logger, self.stream.stream_params.gst_destination, self.stream.stream_params.initial_bitrate_h265, self.stream.cam_config.send_fps, self.stream.stream_params.show_frames_gst, self.stream.stream_params.send_frames_gst, from_testvideo=False)
         else:
             self.stream.gst_sender = None
 
@@ -251,6 +255,7 @@ class Grabber():
                 new_bitrate = int(msg.cameraControl.bitrateKBs.real)
                 new_fps = int(msg.cameraControl.fps.real)
                 self.logger.info(f"Set bitrate to {new_bitrate} [KBs], FPS to {new_fps} [Hz]")
+                self.stream.gst_sender.change_bitrate(new_bitrate)
                 self.send_ack(sender_address)
             
             # TODO do things
@@ -357,7 +362,7 @@ class Grabber():
                     # TODO fill in the right values
                     frame_number = 0 # NOTE: Always 0 in status 
                     fps = int(self.stream.last_fps)
-                    bitrateKBs = 10
+                    bitrateKBs = self.stream.current_bitrate_h265
                     calibration = False # NOTE: Always False in status
                     addOverlay = False  # NOTE: Always False in status
                     status_msg = cv_structs.create_status(frame_number, fps, bitrateKBs, calibration, addOverlay) # Create ctypes status
