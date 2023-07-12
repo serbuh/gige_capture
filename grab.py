@@ -223,7 +223,7 @@ class Grabber():
         else:
             self.stream.gst_sender = None
 
-    def handle_ctypes_msg_callback(self, msg):
+    def handle_ctypes_msg_callback(self, msg, sender_address):
         self.logger.info(f">> Got:\n{msg}") # Server
         
         if msg is None:
@@ -238,20 +238,20 @@ class Grabber():
                     do_NUC()
                 except Exception as e:
                     self.logger.error(f"Failed to do the NUC: {e}")
-                    self.send_ack(False, 1)
+                    self.send_ack(sender_address, False, 1)
                 else:
                     self.logger.info("Nuc complete")
-                    self.send_ack()
+                    self.send_ack(sender_address)
 
             elif msg.cameraControl.addOverlay.value:
                 self.logger.info("ADD OVERLAY!")
-                self.send_ack()
+                self.send_ack(sender_address)
 
             else:
                 new_bitrate = int(msg.cameraControl.bitrateKBs.real)
                 new_fps = int(msg.cameraControl.fps.real)
                 self.logger.info(f"Set bitrate to {new_bitrate} [KBs], FPS to {new_fps} [Hz]")
-                self.send_ack()
+                self.send_ack(sender_address)
             
             # TODO do things
         
@@ -265,14 +265,14 @@ class Grabber():
         if self.communicator.received_msg_queue is not None:
             self.communicator.received_msg_queue.put_nowait(msg)
     
-    def send_ack(self, isOk=True, errorCode=0):
+    def send_ack(self, sender_address, isOk=True, errorCode=0):
         isOk_str = 'Ok' if isOk else 'BAD'
         errorCode_str = f', errorCode={errorCode}' if errorCode else ""
         self.logger.info(f"Sending ACK({isOk_str}{errorCode_str})")
         # Create ack
         params_result_msg = cv_structs.create_cv_command_ack(isOk, errorCode)
         # Send Ack
-        self.communicator.send_ctypes_msg(params_result_msg)
+        self.communicator.send_ctypes_msg(params_result_msg, sender_address)
 
     def grabber_loop(self):
         if self.messages_handler_thread is not None:
@@ -355,11 +355,11 @@ class Grabber():
                 # Send status
                 if self.configurator.send_status and getattr(self, "stream", None) is not None:
                     # TODO fill in the right values
-                    frame_number = 300
+                    frame_number = 0 # NOTE: Always 0 in status 
                     fps = int(self.stream.last_fps)
                     bitrateKBs = 10
-                    calibration = False
-                    addOverlay = False
+                    calibration = False # NOTE: Always False in status
+                    addOverlay = False  # NOTE: Always False in status
                     status_msg = cv_structs.create_status(frame_number, fps, bitrateKBs, calibration, addOverlay) # Create ctypes status
                     self.communicator.send_ctypes_msg(status_msg) # Send status
                 

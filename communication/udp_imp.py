@@ -25,9 +25,11 @@ class UDP():
         if send_from_port is not None:
             self.send_sock.bind(('0.0.0.0', send_from_port))
 
-    def send(self, msg_serialized):
+    def send(self, msg_serialized, sender_address):
         #print(f"Sending to {self.send_channel}:\n'{msg_serialized}'")
-        self.send_sock.sendto(msg_serialized, self.send_channel)
+        # NOTE send to sender_address. If None => send to predefined channel
+        send_to = sender_address if sender_address is not None else self.send_channel
+        self.send_sock.sendto(msg_serialized, send_to)
 
     def recv(self): # Not in use
         try:
@@ -40,7 +42,7 @@ class UDP():
         '''
         NOTE: non-blocking receive
         '''
-        msg_serialized_list = []
+        msg_serialized_with_addr_list = []
         new_data_available = True
         while new_data_available:
             readable, writable, exceptional = select.select([self.recv_sock], [], [self.recv_sock], 0)
@@ -48,12 +50,12 @@ class UDP():
                 new_data_available = False
             for s in readable:
                 if s is self.recv_sock:
-                    msg_serialized_data, address = s.recvfrom(4*1024)
+                    msg_serialized_data, sender_address = s.recvfrom(4*1024)
                     # if isinstance(msg_serialized_data, bytes):
                     #     msg_serialized_data = msg_serialized_data.decode() # recvfrom returnes bytes in python3. json.loads() receives str.
-                    msg_serialized_list.append(msg_serialized_data)
+                    msg_serialized_with_addr_list.append((msg_serialized_data, sender_address))
         
-        return msg_serialized_list # return dict
+        return msg_serialized_with_addr_list # return dict
     
     @staticmethod
     def serialize(msg):
@@ -79,9 +81,9 @@ if __name__=='__main__':
     
     def receiver_loop():
         for i in range(12):
-            msg_serialized_list = UDP_conn.recv_select()
-            #print(f"listening {i}: {msg_serialized_list}")
-            for msg_serialized in msg_serialized_list:
+            msg_serialized_with_addr_list = UDP_conn.recv_select()
+            #print(f"listening {i}: {msg_serialized_with_addr_list}")
+            for (msg_serialized, sender_address) in msg_serialized_with_addr_list:
                 print(f"Got\n{UDP.deserialize(msg_serialized)}")
             time.sleep(0.5)
             

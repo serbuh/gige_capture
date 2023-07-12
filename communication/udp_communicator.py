@@ -50,12 +50,12 @@ class Communicator():
     def set_receive_queue(self, queue):
         self.received_msg_queue = queue
     
-    def send_ctypes_msg(self, ctypes_msg):
+    def send_ctypes_msg(self, ctypes_msg, sender_address=None):
         # Serialize ctypes
         if self.print_messages:
             self.logger.debug(f"Sending:\n{ctypes_msg}")
         msg_serialized = self.serialize_ctypes(ctypes_msg)
-        self.UDP_conn.send(msg_serialized) # Send status
+        self.UDP_conn.send(msg_serialized, sender_address) # Send status/reply
 
     def receive_loop(self):
         '''
@@ -63,10 +63,10 @@ class Communicator():
         '''
         try:
             while self.keep_receiving:
-                msg_serialized_list = self.UDP_conn.recv_select()
-                for msg_serialized in msg_serialized_list:
+                msg_serialized_with_addr_list = self.UDP_conn.recv_select()
+                for (msg_serialized, sender_address) in msg_serialized_with_addr_list:
                     msg = self.deserialize_to_ctypes(msg_serialized) # Try to deserialize
-                    self.handle_ctypes_msg_callback(msg)
+                    self.handle_ctypes_msg_callback(msg, sender_address)
 
                 time.sleep(0.01)
         except KeyboardInterrupt:
