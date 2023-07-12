@@ -218,7 +218,8 @@ class Grabber():
 
         # Send frames options
         if self.stream.stream_params.enable_gst:
-            self.stream.gst_sender = GstSender(self.logger, self.stream.stream_params.gst_destination, self.stream.cam_config.send_fps, self.stream.stream_params.show_frames_gst, self.stream.stream_params.send_frames_gst, from_testvideo=False)
+            bitrate_h265 = 200 # TODO
+            self.stream.gst_sender = GstSender(self.logger, self.stream.stream_params.gst_destination, bitrate_h265, self.stream.cam_config.send_fps, self.stream.stream_params.show_frames_gst, self.stream.stream_params.send_frames_gst, from_testvideo=False)
         else:
             self.stream.gst_sender = None
 
