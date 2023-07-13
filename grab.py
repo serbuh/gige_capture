@@ -255,7 +255,7 @@ class Grabber():
                 new_bitrate = int(msg.cameraControl.bitrateKBs.real)
                 new_fps = int(msg.cameraControl.fps.real)
                 self.logger.info(f"Set bitrate to {new_bitrate} [KBs], FPS to {new_fps} [Hz]")
-                self.stream.gst_sender.change_bitrate(new_bitrate)
+                #self.stream.gst_sender.change_bitrate(new_bitrate)
                 self.send_ack(sender_address)
             
             # TODO do things
