@@ -413,7 +413,7 @@ class Grabber():
             self.logger.info("Exception during closing camera grabbing")
         
         self.logger.info("Waiting for the messages loop to end")
-        if self.messages_handler_thread is not None:
+        if self.messages_handler_thread is not None and self.messages_handler_thread.is_alive():
             self.messages_handler_thread.join()
         self.logger.info("Messages handler loop ended")
         
