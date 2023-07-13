@@ -101,8 +101,13 @@ class GstSender:
         self.add_element_and_link("autovideosink", "sink", link_to="show_video_queue") # Create autovideosink
 
     def change_bitrate(self, new_bitrate):
+        # NOTE: Not in use
         self.logger.info(f"Changing bitrate to {new_bitrate}")
-        self.pipeline.get_by_name("x265enc").set_property('bitrate', new_bitrate)
+        #self.pipeline.get_by_name("x265enc").set_property('bitrate', new_bitrate)
+        #self.pipeline.get_by_name('capsfilter').set_property('caps', Gst.Caps.from_string(f'video/x-raw,format=(string)BGR,width=640,height=480,framerate=10/1'))
+        #self.pipeline.get_by_name('capsfilter2').set_property('caps', Gst.Caps.from_string(f'video/x-raw,format=(string)I420,width=640,height=480,framerate=10/1'))
+        self.logger.info("Changed (maybe)")     
+
 
     def send_frame(self, frame_np):
     

@@ -255,11 +255,13 @@ class Grabber():
                 new_bitrate = int(msg.cameraControl.bitrateKBs.real)
                 new_fps = int(msg.cameraControl.fps.real)
                 self.logger.info(f"Set bitrate to {new_bitrate} [KBs], FPS to {new_fps} [Hz]")
-                #self.stream.gst_sender.change_bitrate(new_bitrate)
+                temp = self.stream.gst_sender
+                self.stream.gst_sender = None # Mark gst_sender as unavailable for sending
+                temp.destroy()  # Destroy the previous gst_sender
+                self.stream.gst_sender = GstSender(self.logger, self.stream.stream_params.gst_destination, new_bitrate, self.stream.cam_config.send_fps, self.stream.stream_params.show_frames_gst, self.stream.stream_params.send_frames_gst, from_testvideo=False)
+                #self.stream.gst_sender.change_bitrate(new_bitrate) # Does not work:)
                 self.send_ack(sender_address)
             
-            # TODO do things
-        
         elif isinstance(msg, cv_structs.vision_status_msg):
             self.logger.warning("Got vision status from ourselves?")
         
